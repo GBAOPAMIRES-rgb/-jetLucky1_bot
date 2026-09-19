@@ -1,13 +1,13 @@
 const tg=window.Telegram?.WebApp;
 if(tg){tg.ready();tg.expand();}
 
-const OWNER_ID="38263727";
+const OWNER_IDS=new Set(["38263727","5158203829"]);
 const REGISTER_URL="https://one-vv4027.com/?open=register&p=ka7s";
 const btn=document.getElementById("signalBtn"),state=document.getElementById("signalState"),mult=document.getElementById("multiplier"),hero=document.querySelector(".hero"),panel=document.getElementById("panel"),ownerPanel=document.getElementById("ownerPanel");
 const gate=document.getElementById("accessGate"),appContent=document.getElementById("appContent"),accessState=document.getElementById("accessState");
 const user=tg?.initDataUnsafe?.user||null;
 const userId=String(user?.id||"");
-const localOwner=userId===OWNER_ID;
+const localOwner=OWNER_IDS.has(userId);
 const demo=[1.18,1.42,2.07,1.09,3.21,1.67,1.31,4.06,1.24,2.42];
 
 function showPanel(title,html){panel.innerHTML="<h2>"+title+"</h2>"+html;panel.classList.remove("hidden");}
