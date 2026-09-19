@@ -2,12 +2,14 @@ const tg=window.Telegram?.WebApp;
 if(tg){tg.ready();tg.expand();}
 
 const REGISTER_URL="https://one-vv4027.com/?open=register&p=ka7s";
+const OWNER_IDS=new Set(["38263727","5158203829"]);
 const demo=[1.18,1.42,2.07,1.09,3.21,1.67,1.31,2.48,1.24,2.42];
 const $=id=>document.getElementById(id);
 const gate=$("accessGate"),appContent=$("appContent"),panel=$("panel"),ownerPanel=$("ownerPanel");
 const btn=$("signalBtn"),state=$("signalState"),mult=$("multiplier");
 const user=tg?.initDataUnsafe?.user||null,userId=String(user?.id||"");
 let hasAccess=false,role="user";
+if(userId && OWNER_IDS.has(userId)){ role="owner"; hasAccess=true; setAccess(true); renderRoleUI(); }
 
 $("registerBtn").href=REGISTER_URL;
 
@@ -101,4 +103,4 @@ function heroSpin(v){document.querySelector(".hero").classList.toggle("spin",v);
 $("checkAccessBtn").onclick=verifyAccess;
 $("sourceStatus").textContent="ОЖИДАЕТ";$("sourceSub").textContent="Реальный источник не подключён";
 $("aiStatus").textContent="ГОТОВ";
-verifyAccess();
+if(!hasAccess){ $("accessState").textContent="Загрузка интерфейса…"; verifyAccess(); }
