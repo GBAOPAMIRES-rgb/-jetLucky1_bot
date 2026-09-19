@@ -1,22 +1,19 @@
 const http=require("http");
 const fs=require("fs");
 const path=require("path");
+const crypto=require("crypto");
 
 const PORT=process.env.PORT||3000;
 const OWNER_ID=String(process.env.OWNER_ID||"38263727");
 const REGISTER_URL=process.env.REGISTER_URL||"https://one-vv4027.com/?open=register&p=ka7s";
+const TELEGRAM_BOT_TOKEN=process.env.TELEGRAM_BOT_TOKEN||"";
 const ROOT=__dirname;
 
 const MIME={
-  ".html":"text/html; charset=utf-8",
-  ".css":"text/css; charset=utf-8",
-  ".js":"application/javascript; charset=utf-8",
-  ".json":"application/json; charset=utf-8",
-  ".png":"image/png",
-  ".jpg":"image/jpeg",
-  ".jpeg":"image/jpeg",
-  ".svg":"image/svg+xml",
-  ".ico":"image/x-icon"
+  ".html":"text/html; charset=utf-8",".css":"text/css; charset=utf-8",
+  ".js":"application/javascript; charset=utf-8",".json":"application/json; charset=utf-8",
+  ".png":"image/png",".jpg":"image/jpeg",".jpeg":"image/jpeg",
+  ".svg":"image/svg+xml",".ico":"image/x-icon"
 };
 
 function json(res,status,data){
@@ -24,32 +21,45 @@ function json(res,status,data){
   res.end(JSON.stringify(data));
 }
 
+function validateInitData(initData){
+  if(!TELEGRAM_BOT_TOKEN)return {ok:false,error:"telegram_bot_token_not_configured"};
+  if(!initData||typeof initData!=="string")return {ok:false,error:"init_data_required"};
+  const params=new URLSearchParams(initData);
+  const hash=params.get("hash");
+  if(!hash)return {ok:false,error:"hash_missing"};
+  params.delete("hash");
+  const dataCheckString=[...params.entries()].sort(([a],[b])=>a.localeCompare(b)).map(([k,v])=>k+"="+v).join("\n");
+  const secret=crypto.createHmac("sha256","WebAppData").update(TELEGRAM_BOT_TOKEN).digest();
+  const calculated=crypto.createHmac("sha256",secret).update(dataCheckString).digest("hex");
+  if(hash.length!==calculated.length||!crypto.timingSafeEqual(Buffer.from(hash),Buffer.from(calculated)))return {ok:false,error:"init_data_invalid"};
+  let user=null;
+  try{user=JSON.parse(params.get("user")||"null");}catch{return {ok:false,error:"user_invalid"};}
+  if(!user?.id)return {ok:false,error:"user_missing"};
+  return {ok:true,user};
+}
+
 function serveStatic(req,res){
   let pathname=new URL(req.url,"http://localhost").pathname;
-  if(pathname==="/") pathname="/index.html";
-  if(pathname.includes("..")) return json(res,400,{ok:false,error:"invalid_path"});
+  if(pathname==="/")pathname="/index.html";
+  if(pathname.includes(".."))return json(res,400,{ok:false,error:"invalid_path"});
   const file=path.join(ROOT,pathname);
-  if(!file.startsWith(ROOT)) return json(res,400,{ok:false,error:"invalid_path"});
-  try{
-    const data=fs.readFileSync(file);
-    res.writeHead(200,{"Content-Type":MIME[path.extname(file).toLowerCase()]||"application/octet-stream","Cache-Control":"no-cache"});
-    res.end(data);
-  }catch{
-    json(res,404,{ok:false,error:"not_found"});
-  }
+  if(!file.startsWith(ROOT))return json(res,400,{ok:false,error:"invalid_path"});
+  try{const data=fs.readFileSync(file);res.writeHead(200,{"Content-Type":MIME[path.extname(file).toLowerCase()]||"application/octet-stream","Cache-Control":"no-cache"});res.end(data);}
+  catch{json(res,404,{ok:false,error:"not_found"});}
 }
 
 const server=http.createServer((req,res)=>{
   const url=new URL(req.url,"http://localhost");
-  if(url.pathname==="/health") return json(res,200,{ok:true,service:"jetLucky1",mode:"read-only",miniApp:{index:fs.existsSync(path.join(ROOT,"index.html")),css:fs.existsSync(path.join(ROOT,"style.css")),js:fs.existsSync(path.join(ROOT,"app.js"))}});
-  if(url.pathname==="/api/config") return json(res,200,{ok:true,registrationUrl:REGISTER_URL});
+  if(url.pathname==="/health")return json(res,200,{ok:true,service:"jetLucky1",mode:"read-only",telegramValidation:TELEGRAM_BOT_TOKEN?"configured":"not_configured",miniApp:{index:fs.existsSync(path.join(ROOT,"index.html")),css:fs.existsSync(path.join(ROOT,"style.css")),js:fs.existsSync(path.join(ROOT,"app.js"))}});
+  if(url.pathname==="/api/config")return json(res,200,{ok:true,registrationUrl:REGISTER_URL});
   if(url.pathname==="/api/access"){
-    const id=url.searchParams.get("telegram_id");
-    if(!id)return json(res,400,{ok:false,error:"telegram_id_required"});
-    if(String(id)===OWNER_ID)return json(res,200,{ok:true,access:true,role:"owner"});
-    return json(res,200,{ok:true,access:false,role:"user",reason:"registration_verification_not_connected"});
+    const result=validateInitData(url.searchParams.get("init_data"));
+    if(!result.ok)return json(res,401,{ok:false,error:result.error});
+    const id=String(result.user.id);
+    if(id===OWNER_ID)return json(res,200,{ok:true,access:true,role:"owner",telegram_id:id});
+    return json(res,200,{ok:true,access:false,role:"user",telegram_id:id,reason:"registration_verification_not_connected"});
   }
-  if(req.method!=="GET") return json(res,405,{ok:false,error:"method_not_allowed"});
+  if(req.method!=="GET")return json(res,405,{ok:false,error:"method_not_allowed"});
   return serveStatic(req,res);
 });
 
