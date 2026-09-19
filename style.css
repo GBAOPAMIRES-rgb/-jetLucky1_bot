@@ -23,3 +23,5 @@
 .signal-circle-btn:disabled{opacity:.65;transform:none}
 .signal-circle-icon{font-size:30px;line-height:1}
 .signal-circle-btn b{font-size:10px;letter-spacing:.6px}
+
+.signal-controls{display:flex;gap:7px;overflow:auto;margin-bottom:10px}.control-chip{border:1px solid #28324a;border-radius:12px;background:#0d1423;color:#aeb8ce;padding:9px 11px;font-size:9px;white-space:nowrap}.control-chip.active{background:#26204e;border-color:#6755d8;color:#c9c0ff}.signal-meta{display:flex;justify-content:space-between;color:#68758e;font-size:9px;padding:8px 0}.signal-meta b{color:#dce2ef;margin-left:4px}.signal-result{padding:14px;border:1px solid #28324a;border-radius:15px;background:#0c1423;text-align:center}.signal-result span{font-size:18px;font-weight:900;color:#a999ff}.signal-result small{display:block;margin-top:4px;color:#78859e;font-size:9px}
