@@ -14,7 +14,7 @@ function showPanel(title,html){panel.innerHTML="<h2>"+title+"</h2>"+html;panel.c
 function renderOwner(){
   if(!localOwner)return;
   ownerPanel.innerHTML='<div class="owner-title"><h2>Owner-панель</h2><span class="badge">OWNER</span></div>'+
-    '<div class="row"><span>Telegram ID</span><b>'+OWNER_ID+'</b></div>'+
+    '<div class="row"><span>Telegram ID</span><b>'+userId+'</b></div>'+
     '<div class="row"><span>Режим</span><b>Полный доступ</b></div>'+
     '<div class="row"><span>Регистрация</span><b>Не требуется</b></div>'+
     '<p class="muted">Владелец не проходит регистрацию.</p>';
@@ -38,8 +38,10 @@ function showDiagnostic(text){
   box.innerHTML="<h3>Диагностика доступа</h3>"+text;
 }
 document.getElementById("registerBtn").href=REGISTER_URL;
+if(localOwner){setAccess(true);}
 
 async function verifyAccess(){
+  if(localOwner){setAccess(true);return true;}
   const hasTelegram=!!tg;
   const hasInitData=!!tg?.initData;
   const rawId=String(tg?.initDataUnsafe?.user?.id||"");
