@@ -41,7 +41,7 @@ function serveStatic(req,res){
 
 const server=http.createServer((req,res)=>{
   const url=new URL(req.url,"http://localhost");
-  if(url.pathname==="/health") return json(res,200,{ok:true,service:"jetLucky1",mode:"read-only"});
+  if(url.pathname==="/health") return json(res,200,{ok:true,service:"jetLucky1",mode:"read-only",miniApp:{index:fs.existsSync(path.join(ROOT,"index.html")),css:fs.existsSync(path.join(ROOT,"style.css")),js:fs.existsSync(path.join(ROOT,"app.js"))}});
   if(url.pathname==="/api/config") return json(res,200,{ok:true,registrationUrl:REGISTER_URL});
   if(url.pathname==="/api/access"){
     const id=url.searchParams.get("telegram_id");
