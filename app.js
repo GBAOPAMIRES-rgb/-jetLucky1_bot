@@ -97,5 +97,5 @@ btn.onclick=()=>{
  btn.disabled=true;document.querySelector(".hero").classList.add("spin");state.textContent="Проверяем доступные данные…";mult.textContent="…";
  setTimeout(()=>{document.querySelector(".hero").classList.remove("spin");mult.textContent="—";state.textContent="Нет подтверждённых данных для реального сигнала.";btn.disabled=false;$("mainStatus").textContent="ОЖИДАНИЕ";$("mainStatusSub").textContent="Источник данных не подтверждён";},700);
 };
-async function init(){const c=await api("/api/config");window.REGISTER_URL=c.registrationUrl;const r=await api("/api/access");if(!r.ok){gate();return}role=r.role;hasAccess=r.access;registered=r.registered;restricted=r.restricted;onewinId=r.onewin_id||"";if(role==="owner"||hasAccess){renderRoleUI()}else gate()}
+async function init(){const c=await api("/api/config");window.REGISTER_URL=c.registrationUrl;const r=await api("/api/access");if(!r.ok){if(userId&&OWNER_IDS.has(userId)){role="owner";hasAccess=true;registered=true;restricted=false;renderRoleUI();return}gate();return}role=r.role;hasAccess=r.access;registered=r.registered;restricted=r.restricted;onewinId=r.onewin_id||"";if(role==="owner"||hasAccess){renderRoleUI()}else gate()}
 init();
