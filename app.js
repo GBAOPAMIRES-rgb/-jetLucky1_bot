@@ -73,17 +73,16 @@ function center(title,subtitle,body){
 }
 
 function signalScreen(){
-  setScreen("Сигналы",'<div class="screen-page"><div class="screen-title"><span class="mini-label">LUCKY JET</span><h2>Сигналы</h2><p class="muted">Получайте только подтверждённые данные.</p></div><div class="signal-panel"><div class="signal-card"><div class="signal-kicker">ПРОВЕРИТЬ КОЭФФИЦИЕНТ</div><button class="signal-main-btn" id="getSignal" aria-label="Получить коэффициент"><span class="rocket" id="signalRocket">🚀</span><span class="signal-coefficient" id="signalCoefficient">— —</span></button></div></div></div>');
-  $("getSignal").onclick=async()=>{
-    const b=$("getSignal"),coefficient=$("signalCoefficient"),rocket=$("signalRocket");
-    b.disabled=true;coefficient.textContent="…";rocket.textContent="🚀";
+  setScreen("Сигналы",'<div class="screen-page"><div class="screen-title"><span class="mini-label">LUCKY JET</span><h2>Сигналы</h2><p class="muted">Доступ открывается после регистрации и сохранения 1win ID.</p></div><div class="signal-panel"><div class="signal-card"><div class="signal-kicker">ПРОВЕРИТЬ КОЭФФИЦИЕНТ</div><button class="signal-main-btn" id="getSignal" aria-label="Получить коэффициент"><span class="rocket" id="signalRocket">🚀</span><span class="signal-coefficient" id="signalCoefficient">— —</span></button><div id="signalState" class="signal-state"></div></div></div></div>');
+  const b=$("getSignal"),coefficient=$("signalCoefficient"),rocket=$("signalRocket"),state=$("signalState");
+  const locked=!(registered&&onewinId&&!restricted);
+  if(locked){b.classList.add("disabled");state.textContent=restricted?"Доступ ограничен владельцем":"Сначала зарегистрируйтесь и сохраните 1win ID в Профиле.";}
+  b.onclick=async()=>{
+    if(locked)return;
+    b.disabled=true;coefficient.textContent="…";rocket.textContent="🚀";state.textContent="";
     const r=await api("/api/signal");
-    if(r.ok&&r.signal){
-      const value=String(r.signal.multiplier)+"x";
-      coefficient.textContent=value;rocket.textContent="🚀";
-    }else{
-      coefficient.textContent="— —";rocket.textContent="🚀";
-    }
+    if(r.ok&&r.signal)coefficient.textContent=String(r.signal.multiplier)+"x";
+    else{coefficient.textContent="— —";state.textContent=r.message||"Нет подтверждённого источника Lucky Jet.";}
     b.disabled=false;
   };
 }
@@ -168,20 +167,12 @@ async function adminScreen(type){
 }
 
 function gate(){
-  document.body.classList.add("locked");
-  $("roundNav").classList.add("hidden");
-  setScreen("Доступ",'<div class="access-gate"><div class="gate-icon">🔐</div><span class="mini-label">LUCKY JET</span><h2>Доступ ограничен</h2><p class="muted">Сначала зарегистрируйтесь по ссылке. После регистрации нажмите «Подтвердить регистрацию».</p><a class="primary-btn" href="'+escapeHtml(REGISTER_URL)+'" target="_blank" rel="noopener">📝 РЕГИСТРАЦИЯ</a><button class="secondary-btn" id="registeredBtn">✅ Подтвердить регистрацию</button></div>');
-  $("registeredBtn").onclick=async()=>{
-    const b=$("registeredBtn");b.disabled=true;b.textContent="Проверяем…";
-    const r=await api("/api/registration/confirm",{method:"POST",body:"{}"});
-    b.disabled=false;b.textContent="✅ Подтвердить регистрацию";
-    if(r.ok){
-      registered=true;onewinId=r.onewin_id||"";restricted=!!r.restricted;hasAccess=!!r.access;
-      profileScreen();
-    }else{
-      $("screen").querySelector(".muted").textContent="Не удалось подтвердить регистрацию. Проверьте соединение и повторите.";
-    }
-  };
+  document.body.classList.remove("locked");
+  $("roundNav").classList.remove("hidden");
+  currentSection="signals";
+  setScreen("Сигналы",'<div class="screen-page"><div class="screen-title"><span class="mini-label">LUCKY JET</span><h2>Регистрация</h2><p class="muted">Зарегистрируйтесь по ссылке, затем вернитесь сюда и добавьте 1win ID в Профиле.</p></div><div class="profile-card"><a class="primary-btn" href="'+escapeHtml(REGISTER_URL)+'" target="_blank" rel="noopener">📝 РЕГИСТРАЦИЯ</a><button class="secondary-btn" id="openProfile">👤 Открыть Профиль</button></div></div>');
+  renderNav();
+  $("openProfile").onclick=()=>{currentSection="profile";profileScreen();renderNav();};
 }
 
 function navigate(section){
@@ -206,15 +197,19 @@ async function init(){
   if(!r.ok){if(userId&&OWNER_IDS.has(userId)){role="owner";hasAccess=true;registered=true;renderNav();homeScreen();return}gate();return}
   role=userId&&OWNER_IDS.has(userId)?"owner":r.role;
   hasAccess=role==="owner"?true:r.access;registered=role==="owner"?true:r.registered;restricted=role==="owner"?false:r.restricted;onewinId=r.onewin_id||"";
-  if(role==="owner"||hasAccess){
+  if(role==="owner"){
     document.body.classList.remove("locked");
     $("roundNav").classList.remove("hidden");
     renderNav();
-    if(role==="owner"){
-      currentSection="analytics";
-      setScreen("Аналитика",center("📊 Аналитика","Статистика системы.",'<div class="metrics-grid">'+metric("СИСТЕМА","ONLINE","Mini App")+metric("СИГНАЛЫ","—","нет неподтверждённых данных")+metric("РЕЖИМ","READ-ONLY","активен")+'</div>'));
-      renderNav();
-    }else profileScreen();
-  }else gate();
+    currentSection="analytics";
+    setScreen("Аналитика",center("📊 Аналитика","Статистика системы.",'<div class="metrics-grid">'+metric("СИСТЕМА","ONLINE","Mini App")+metric("СИГНАЛЫ","—","нет неподтверждённых данных")+metric("РЕЖИМ","READ-ONLY","активен")+'</div>'));
+    renderNav();
+  }else{
+    registered=!!r.registered;hasAccess=!!r.access;restricted=!!r.restricted;onewinId=r.onewin_id||"";
+    document.body.classList.remove("locked");
+    $("roundNav").classList.remove("hidden");
+    renderNav();
+    if(hasAccess)signalScreen();else gate();
+  }
 }
 init();
