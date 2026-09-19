@@ -1,1 +1,61 @@
-const tg=window.Telegram?.WebApp;if(tg){tg.ready();tg.expand()}const btn=document.getElementById("signalBtn"),state=document.getElementById("signalState"),mult=document.getElementById("multiplier"),hero=document.querySelector(".hero"),panel=document.getElementById("panel");const demo=[1.18,1.42,2.07,1.09,3.21,1.67,1.31,4.06,1.24,2.42];function showPanel(title,html){panel.innerHTML="<h2>"+title+"</h2>"+html;panel.classList.remove("hidden")}btn.onclick=()=>{btn.disabled=true;hero.classList.add("spin");state.textContent="Анализируем исторические данные…";mult.textContent="…";setTimeout(()=>{hero.classList.remove("spin");const v=demo[Math.floor(Math.random()*demo.length)];mult.textContent=v.toFixed(2)+"×";state.textContent="Индикатор сформирован на основе демонстрационных данных";btn.disabled=false},1300)};document.querySelectorAll("[data-section]").forEach(b=>b.onclick=()=>{const s=b.dataset.section;if(s==="history")showPanel("История",demo.slice().reverse().map((x,i)=>'<div class="row"><span>Раунд '+(i+1)+'</span><b>'+x.toFixed(2)+'×</b></div>').join(""));if(s==="analysis")showPanel("Анализ",'<div class="row"><span>Раундов</span><b>'+demo.length+'</b></div><div class="row"><span>Среднее</span><b>'+((demo.reduce((a,b)=>a+b,0))/demo.length).toFixed(2)+'×</b></div><p class="muted">Данные демонстрационные. Реальный источник подключим отдельно.</p>');if(s==="profile")showPanel("Профиль",'<div class="row"><span>Telegram</span><b>'+(tg?.initDataUnsafe?.user?.first_name||"Пользователь")+'</b></div><div class="row"><span>Режим</span><b>Read-only</b></div>');if(s==="support")showPanel("Поддержка",'<p class="muted">По вопросам работы Mini App используйте контакт поддержки, указанный владельцем бота.</p>')});
+const tg=window.Telegram?.WebApp;
+if(tg){tg.ready();tg.expand();}
+const OWNER_ID="38263727";
+const REGISTER_URL="https://one-vv4027.com/?open=register&p=ka7s";
+const btn=document.getElementById("signalBtn"),state=document.getElementById("signalState"),mult=document.getElementById("multiplier"),hero=document.querySelector(".hero"),panel=document.getElementById("panel"),ownerPanel=document.getElementById("ownerPanel");
+const gate=document.getElementById("accessGate"),appContent=document.getElementById("appContent"),accessState=document.getElementById("accessState");
+const user=tg?.initDataUnsafe?.user||null;
+const userId=String(user?.id||"");
+const isOwner=userId===OWNER_ID;
+
+// Demo data is intentionally kept until a real Lucky Jet history source is verified.
+const demo=[1.18,1.42,2.07,1.09,3.21,1.67,1.31,4.06,1.24,2.42];
+
+function showPanel(title,html){
+  panel.innerHTML="<h2>"+title+"</h2>"+html;
+  panel.classList.remove("hidden");
+}
+function renderOwner(){
+  if(!isOwner)return;
+  ownerPanel.innerHTML='<div class="owner-title"><h2>Owner-панель</h2><span class="badge">OWNER</span></div>'+
+    '<div class="row"><span>Telegram ID</span><b>'+OWNER_ID+'</b></div>'+
+    '<div class="row"><span>Режим</span><b>Полный доступ</b></div>'+
+    '<div class="row"><span>Регистрация</span><b>Не требуется</b></div>'+
+    '<p class="muted">Здесь позже подключим управление доступом пользователей после серверной проверки.</p>';
+  ownerPanel.classList.remove("hidden");
+}
+function applyAccess(){
+  const allowed=isOwner;
+  gate.classList.toggle("hidden",allowed);
+  appContent.classList.toggle("hidden",!allowed);
+  if(isOwner)renderOwner();
+  return allowed;
+}
+applyAccess();
+
+document.getElementById("registerBtn").href=REGISTER_URL;
+document.getElementById("checkAccessBtn").onclick=()=>{
+  accessState.textContent="Серверная проверка регистрации ещё не подключена. Доступ владельца определяется по Telegram ID.";
+};
+
+btn.onclick=()=>{
+  if(!isOwner)return;
+  btn.disabled=true;hero.classList.add("spin");state.textContent="Анализируем доступные данные…";mult.textContent="…";
+  setTimeout(()=>{
+    hero.classList.remove("spin");
+    const v=demo[Math.floor(Math.random()*demo.length)];
+    mult.textContent=v.toFixed(2)+"×";
+    state.textContent="Демонстрационный индикатор. Реальный источник ещё не подключён.";
+    btn.disabled=false;
+  },1300);
+};
+
+document.querySelectorAll("[data-section]").forEach(b=>b.onclick=()=>{
+  const s=b.dataset.section;
+  if(s==="history")showPanel("История",demo.slice().reverse().map((x,i)=>'<div class="row"><span>Раунд '+(i+1)+'</span><b>'+x.toFixed(2)+"×</b></div>").join(""));
+  if(s==="analysis")showPanel("Анализ",'<div class="row"><span>Раундов</span><b>'+demo.length+'</b></div><div class="row"><span>Среднее</span><b>'+((demo.reduce((a,b)=>a+b,0))/demo.length).toFixed(2)+'×</b></div><p class="muted">Данные демонстрационные. Реальный источник подключим после проверки.</p>');
+  if(s==="profile")showPanel("Профиль",'<div class="row"><span>Telegram</span><b>'+(user?.first_name||"Пользователь")+'</b></div><div class="row"><span>ID</span><b>'+(userId||"не определён")+'</b></div><div class="row"><span>Доступ</span><b>'+(isOwner?"Owner":"Ожидает проверки")+'</b></div>');
+  if(s==="support")showPanel("Поддержка",'<p class="muted">Поддержка Mini App. Автоматические ставки и торговые операции не выполняются.</p>');
+  if(s==="settings")showPanel("Настройки",'<div class="row"><span>Язык</span><b>Русский</b></div><div class="row"><span>Режим</span><b>Read-only</b></div><div class="row"><span>Источник данных</span><b>Не подключён</b></div>');
+  if(s==="ai")showPanel("AI-анализ",'<p class="muted">AI сможет объяснять статистику и найденные закономерности после подключения проверенного источника данных. Он не будет обещать гарантированный результат.</p>');
+});
