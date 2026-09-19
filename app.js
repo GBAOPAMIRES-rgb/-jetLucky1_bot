@@ -67,7 +67,7 @@ function renderRoleUI(){
     : '<button data-section="signals">🚀 Сигнал</button><button data-section="analysis">⌁ Анализ</button><button data-section="history">◷ История</button><button data-section="ai">✦ AI</button>';
   $("bottomNav").innerHTML=role==="owner"
     ? nav("⌂","Главная","home")+nav("🚀","Сигналы","signals")+nav("⌁","Аналитика","analysis")+nav("👥","Пользователи","users")+nav("☰","Ещё","owner")
-    : nav("⌂","Главная","home")+nav("🚀","Сигналы","signals")+nav("◷","История","history")+nav("✦","AI","ai")+nav("◉","Профиль","profile");
+    : nav("◉","Профиль","profile")+nav("◷","История","history")+nav("🚀","Сигналы","signals")+nav("✦","AI","ai")+nav("?","Поддержка","support");
   bindSections();
   renderOwnerPanel();
 }
