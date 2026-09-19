@@ -70,6 +70,41 @@ const server=http.createServer((req,res)=>{
  if(url.pathname==="/api/bot/status"&&req.method==="GET"){const r=validateInitData(req.headers["x-telegram-init-data"]||"");if(!r.ok||!OWNER_IDS.includes(String(r.user.id)))return json(res,403,{ok:false,error:"owner_only"});return json(res,200,{ok:true,paused:Boolean(settings.paused)});}
  if(url.pathname==="/api/bot/pause"&&req.method==="POST"){const r=validateInitData(req.headers["x-telegram-init-data"]||"");if(!r.ok||!OWNER_IDS.includes(String(r.user.id)))return json(res,403,{ok:false,error:"owner_only"});let b="";req.on("data",x=>b+=x);req.on("end",()=>{try{const d=JSON.parse(b||"{}");settings.paused=Boolean(d.paused);saveSettings();json(res,200,{ok:true,paused:settings.paused})}catch{json(res,400,{ok:false,error:"invalid_body"})}});return;}
  if(url.pathname==="/api/support/message"&&req.method==="POST"){const r=validateInitData(req.headers["x-telegram-init-data"]||"");if(!r.ok)return json(res,401,{ok:false,error:r.error});let b="";req.on("data",x=>b+=x);req.on("end",async()=>{try{const d=JSON.parse(b||"{}"),msg=String(d.message||"").trim().slice(0,1000);if(!msg)return json(res,400,{ok:false,error:"message_required"});for(const owner of OWNER_IDS){try{await telegram("sendMessage",{chat_id:owner,text:"💬 Lucky Jet Support\nTelegram ID: "+r.user.id+"\nUsername: @"+(r.user.username||"—")+"\n\n"+msg})}catch(e){}}json(res,200,{ok:true})}catch{json(res,400,{ok:false,error:"invalid_body"})}});return;}
+ if(url.pathname==="/api/1win/postback"&&(req.method==="GET"||req.method==="POST")){
+  const params=new URL(url,"http://localhost").searchParams;
+  const secret=String(process.env.ONEWIN_POSTBACK_SECRET||"");
+  const supplied=String(params.get("token")||params.get("secret")||req.headers["x-postback-token"]||"");
+  if(secret&&supplied!==secret)return json(res,403,{ok:false,error:"invalid_postback_token"});
+  let body="";
+  if(req.method==="POST"){
+    req.on("data",x=>body+=x);
+    req.on("end",()=>handlePostback(body));
+  }else handlePostback("");
+  function handlePostback(raw){
+    try{
+      let bodyParams=new URLSearchParams();
+      if(raw){try{bodyParams=new URLSearchParams(raw)}catch{}}
+      const get=(...keys)=>{for(const k of keys){const v=params.get(k)||bodyParams.get(k);if(v)return v}return ""};
+      const sub1=get("sub1","sub_id","subid","click_id");
+      const event=get("event","event_type","type","status")||"registration";
+      const status=get("status","state")||"";
+      const player=get("player_id","player","user_id","uid")||"";
+      const isRegistration=/^(registration|registered|reg|lead|signup|sign_up)$/i.test(event)||/^(registration|registered|reg|lead|signup|sign_up)$/i.test(status);
+      console.log("1win postback received",JSON.stringify({sub1,event,status,player,isRegistration}));
+      if(!isRegistration)return json(res,200,{ok:true,accepted:false,event,status});
+      if(!sub1)return json(res,400,{ok:false,error:"sub1_required"});
+      const match=String(sub1).match(/^tg[_:-]?(\\d+)$/i);
+      if(!match)return json(res,200,{ok:true,accepted:false,event,status,reason:"sub1_not_telegram_mapping",sub1});
+      const telegramId=match[1],u=users[telegramId];
+      if(!u)return json(res,200,{ok:true,accepted:false,event,status,reason:"telegram_user_not_found",telegram_id:telegramId});
+      u.registered=true;
+      u.onewin_verified_at=new Date().toISOString();
+      if(player)u.onewin_player_id=String(player).slice(0,200);
+      saveUsers();
+      return json(res,200,{ok:true,accepted:true,event,status,telegram_id:telegramId,registered:true,onewin_id:u.onewin_id||""});
+    }catch(e){console.error("1win postback error",String(e.message||e));return json(res,400,{ok:false,error:"invalid_postback"});}
+  }
+ }
  if(url.pathname==="/api/signal"&&req.method==="GET"){
   const r=validateInitData(req.headers["x-telegram-init-data"]||"");
   if(!r.ok)return json(res,401,{ok:false,error:r.error});
@@ -85,7 +120,7 @@ const server=http.createServer((req,res)=>{
   if(!isOwner&&(!u.registered||!u.onewin_id||u.restricted))return json(res,403,{ok:false,error:"access_denied"});
   return json(res,200,{ok:true,source_confirmed:false,history:[],message:"Нет подтверждённого источника истории Lucky Jet."});
  }
- if(url.pathname==="/api/profile"&&req.method==="POST")&&req.method==="POST"){
+ if(url.pathname==="/api/profile"&&req.method==="POST"){
   const r=validateInitData(req.headers["x-telegram-init-data"]||"");
   if(!r.ok)return json(res,401,{ok:false,error:r.error});
   let b="";req.on("data",x=>b+=x);req.on("end",()=>{
