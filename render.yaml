@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: jetlucky1
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: OWNER_ID
+        value: "38263727"
+      - key: REGISTER_URL
+        value: "https://one-vv4027.com/?open=register&p=ka7s"
