@@ -62,8 +62,10 @@ const server=http.createServer((req,res)=>{
  if(url.pathname==="/api/access"){
   const result=validateInitData(url.searchParams.get("init_data"));if(!result.ok)return json(res,401,{ok:false,error:result.error});
   const id=String(result.user.id);
-  if(OWNER_IDS.includes(id))return json(res,200,{ok:true,access:true,role:"owner",telegram_id:id,features:["signals","analysis","history","ai","users","access","bot","diagnostics","logs","owner","profile","support","settings"]});
-  return json(res,200,{ok:true,access:false,role:"user",telegram_id:id,features:["signals","history","analysis","ai","profile","support","settings"],reason:"registration_verification_not_connected"});
+  const u=ensureUser(result.user);
+  if(OWNER_IDS.includes(id))return json(res,200,{ok:true,access:true,role:"owner",telegram_id:id,registered:true,onewin_id:u.onewin_id||"",restricted:false,features:["signals","history","users","access","bot","diagnostics","logs","owner","profile","support","settings"]});
+  const access=Boolean(u.registered&&u.onewin_id&&!u.restricted);
+  return json(res,200,{ok:true,access,role:"user",telegram_id:id,registered:Boolean(u.registered),onewin_id:u.onewin_id||"",restricted:Boolean(u.restricted),features:["signals","history","profile","support","settings"],reason:access?null:(u.restricted?"restricted":"registration_required")});
  }
  if(url.pathname==="/api/profile"&&req.method==="POST"){
   const r=validateInitData(req.headers["x-telegram-init-data"]||"");
