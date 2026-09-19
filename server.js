@@ -85,15 +85,7 @@ const server=http.createServer((req,res)=>{
   if(!isOwner&&(!u.registered||!u.onewin_id||u.restricted))return json(res,403,{ok:false,error:"access_denied"});
   return json(res,200,{ok:true,source_confirmed:false,history:[],message:"Нет подтверждённого источника истории Lucky Jet."});
  }
- if(url.pathname==="/api/registration/confirm"&&req.method==="POST"){
-  const r=validateInitData(req.headers["x-telegram-init-data"]||"");
-  if(!r.ok)return json(res,401,{ok:false,error:r.error});
-  const u=ensureUser(r.user);
-  if(OWNER_IDS.includes(String(r.user.id)))return json(res,200,{ok:true,role:"owner",registered:true,access:true});
-  u.registered=true;saveUsers();
-  return json(res,200,{ok:true,registered:true,access:Boolean(u.onewin_id&&!u.restricted),onewin_id:u.onewin_id||"",restricted:Boolean(u.restricted)});
- }
- if(url.pathname==="/api/profile"&&req.method==="POST"){
+ if(url.pathname==="/api/profile"&&req.method==="POST")&&req.method==="POST"){
   const r=validateInitData(req.headers["x-telegram-init-data"]||"");
   if(!r.ok)return json(res,401,{ok:false,error:r.error});
   let b="";req.on("data",x=>b+=x);req.on("end",()=>{
