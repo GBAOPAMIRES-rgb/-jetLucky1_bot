@@ -6,6 +6,26 @@ const panel=$("panel"),ownerPanel=$("ownerPanel"),btn=$("signalBtn"),state=$("si
 const user=tg?.initDataUnsafe?.user||null,userId=String(user?.id||"");
 let role=userId&&OWNER_IDS.has(userId)?"owner":"user";
 let hasAccess=true;
+let registered=false;
+let restricted=false;
+let onewinId="";
+
+async function api(endpoint, options={}){
+  const initData=tg?.initData||"";
+  const opts={...options,headers:{...(options.headers||{}),"Content-Type":"application/json","X-Telegram-Init-Data":initData}};
+  let url=endpoint;
+  if(endpoint==="/api/access"){
+    url=endpoint+"?init_data="+encodeURIComponent(initData);
+  }
+  try{
+    const response=await fetch(url,opts);
+    const data=await response.json().catch(()=>({ok:false,error:"invalid_server_response"}));
+    if(!response.ok && data.ok!==false)data.ok=false;
+    return data;
+  }catch(e){
+    return {ok:false,error:"network_error",message:"Не удалось связаться с сервером"};
+  }
+}
 
 function showPanel(title,html){
  panel.innerHTML="<div class='panel-head'><h2>"+title+"</h2><button class='quick-link' id='closePanel'>Закрыть</button></div>"+html;
