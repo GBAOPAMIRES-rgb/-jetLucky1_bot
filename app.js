@@ -53,21 +53,20 @@ function renderRoleUI(){
  const grid=$("sectionGrid");
  const items=role==="owner"?[
  ["🏠","Главная","Центр управления","home",1],["🚀","Сигналы","Аналитический центр","signals",1],
- ["⌁","Аналитика","Статистика","analysis",0],["◷","История","Доступные данные","history",0],["✦","AI-анализ","AI-инструменты","ai",0],
+ ["⌁","Аналитика","Статистика","analysis",0],["◷","История","Доступные данные","history",0],
  ["👥","Пользователи","Список и активность","users",0],["🔐","Управление доступом","Права","access",0],["⚙️","Управление ботом","Режим","bot",0],
  ["🩺","Диагностика","Проверка системы","diag",0],["📋","Логи","Журнал событий","logs",0],["👑","Owner Panel","Полный контроль","owner",1],
  ["◉","Профиль","Аккаунт Owner","profile",0],["?","Поддержка","Помощь и связь","support",0],["⚙","Настройки","Параметры","settings",0]
  ]:[
- ["🚀","Сигналы","Аналитический центр","signals",1],["◷","История","Ваши данные","history",0],["⌁","Анализ","Статистика","analysis",0],
- ["✦","AI-анализ","AI-инструменты","ai",0],["◉","Профиль","Ваш аккаунт","profile",0],["?","Поддержка","Помощь и связь","support",0],["⚙","Настройки","Параметры","settings",0]
+ ["🏠","Главная","Центр Lucky Jet","home",1],["🚀","Сигналы","Аналитический центр","signals",1],["◷","История","Ваши данные","history",0],["◉","Профиль","Ваш аккаунт","profile",0],["?","Поддержка","Помощь и связь","support",0],["⚙","Настройки","Параметры","settings",0]
  ];
  grid.innerHTML=items.map(x=>card(...x)).join("");
  $("quickActions").innerHTML=role==="owner"
  ? '<button data-section="users">👥 Пользователи</button><button data-section="bot">⚙️ Бот</button><button data-section="diag">🩺 Диагностика</button><button data-section="logs">📋 Логи</button>'
- : '<button data-section="signals">🚀 Сигнал</button><button data-section="analysis">⌁ Анализ</button><button data-section="history">◷ История</button><button data-section="ai">✦ AI</button>';
+ : '<button data-section="signals">🚀 Сигнал</button><button data-section="history">◷ История</button><button data-section="profile">◉ Профиль</button><button data-section="support">? Поддержка</button>';
  $("bottomNav").innerHTML=role==="owner"
  ? nav("⌂","Главная","home")+nav("🚀","Сигналы","signals")+nav("⌁","Аналитика","analytics")+nav("👥","Пользователи","users")+nav("☰","Ещё","owner")
- : nav("◉","Профиль","profile")+nav("◷","История","history")+nav("🚀","Сигналы","signals")+nav("✦","AI","ai")+nav("?","Поддержка","support");
+ : nav("⌂","Главная","home")+nav("🚀","Сигналы","signals")+nav("◷","История","history")+nav("◉","Профиль","profile")+nav("?","Поддержка","support");
  bindSections();renderOwnerPanel();
 }
 function bindSections(){
@@ -77,7 +76,7 @@ function bindSections(){
   if(s==="signals"){showPanel("Сигналы",shell("Сигналы","Центральный экран Lucky Jet.",'<div class="signal-result"><span>ГОТОВ</span><small>Нажмите «Получить сигнал» для запуска анализа доступных данных.</small></div><button class="signal-circle-btn" style="margin-top:18px" onclick="document.getElementById(\'signalBtn\').click()"><span class="signal-circle-icon">🚀</span><b>ПОЛУЧИТЬ<br>СИГНАЛ</b></button>'));return;}
   if(s==="history"){showPanel("История",shell("История","Реальные результаты появятся после подключения проверенного источника.",'<div class="row"><span>Данные</span><b>ОЖИДАЮТСЯ</b></div><div class="row"><span>Режим</span><b>READ-ONLY</b></div>'));return;}
   if(s==="analytics"){showPanel("Аналитика",shell("Аналитика","Статистика без автоматических ставок.",'<div class="metrics-grid">'+metric("СИСТЕМА","ONLINE","Mini App")+metric("СИГНАЛЫ","—","нет подтверждённых данных")+metric("AI","ГОТОВ","ожидает данные")+metric("РЕЖИМ","READ-ONLY","активен")+'</div>'));return;}
-  if(s==="ai"){showPanel("AI-анализ",shell("AI-анализ","AI работает только с проверенными входными данными.",'<div class="ai-box"><div class="row"><span>Статус</span><b>ГОТОВ</b></div><div class="row"><span>Данные</span><b>ОЖИДАЮТСЯ</b></div><button class="secondary-btn" onclick="this.textContent=\'ДАННЫЕ ОЖИДАЮТСЯ\'">ЗАПУСТИТЬ AI-АНАЛИЗ</button></div>'));return;}
+
   if(["users","access","bot","diag","logs"].includes(s)){if(role!=="owner")return;adminPanel(s);return;}
   if(s==="owner"){if(role==="owner")ownerPanel.scrollIntoView({behavior:"smooth"});return;}
   if(s==="profile")showPanel("Профиль",'<div class="row"><span>Telegram</span><b>'+(user?.first_name||"Пользователь")+'</b></div><div class="row"><span>ID</span><b>'+userId+'</b></div><div class="row"><span>Роль</span><b>'+role.toUpperCase()+'</b></div>');
