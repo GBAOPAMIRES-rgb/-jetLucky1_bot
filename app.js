@@ -68,7 +68,7 @@ function renderRoleUI(){
  ]:[
  ["🏠","Главная","Центр Lucky Jet","home",1],["🚀","Сигналы","Получение сигнала","signals",1],["📜","История","Ваши результаты","history",0],["◉","Профиль","1win ID и аккаунт","profile",0],["💬","Поддержка","Помощь и связь","support",0],["⚙","Настройки","Язык и часовой пояс","settings",0]];
  grid.innerHTML=items.map(x=>card(...x)).join("");
- $("quickActions").innerHTML=role==="owner"?'<button data-section="users">👥 Пользователи</button><button data-section="access">🔐 Доступ</button><button data-section="bot">⚙️ Бот</button><button data-section="diag">🩺 Диагностика</button>':'<button data-section="signals">🚀 Сигнал</button><button data-section="history">📜 История</button><button data-section="profile">◉ Профиль</button><button data-section="support">💬 Поддержка</button>';
+ $("quickActions").innerHTML="";
  $("bottomNav").innerHTML=role==="owner"?nav("⌂","Главная","home")+nav("🚀","Сигналы","signals")+nav("📊","Аналитика","analytics")+nav("👥","Пользователи","users")+nav("☰","Ещё","owner"):nav("⌂","Главная","home")+nav("🚀","Сигналы","signals")+nav("📜","История","history")+nav("◉","Профиль","profile")+nav("💬","Поддержка","support");
  bindSections();renderOwnerPanel();
 }
@@ -77,7 +77,7 @@ function bindSections(){
   const s=b.dataset.section;
   if(s==="home"){panel.classList.add("hidden");ownerPanel.classList.add("hidden");window.scrollTo({top:0,behavior:"smooth"});return;}
   if(s==="signals"){showPanel("Сигналы",shell("Сигналы","Единственное место получения сигнала.",'<div class="signal-result"><span id="sectionSignalState">ГОТОВ</span><small id="sectionSignalSub">Запрос будет выполнен только к подтверждённому источнику данных.</small></div><button class="signal-circle-btn" style="margin-top:18px" id="sectionSignalBtn"><span class="signal-circle-icon">🚀</span><b>ПОЛУЧИТЬ<br>СИГНАЛ</b></button>'));$("sectionSignalBtn").onclick=async()=>{const b=$("sectionSignalBtn");b.disabled=true;const r=await api("/api/signal");$("sectionSignalState").textContent=r.ok&&r.signal?"СИГНАЛ":"ОЖИДАНИЕ";$("sectionSignalSub").textContent=r.ok&&r.signal?("Коэффициент: "+r.signal.multiplier+"x"):"Источник данных не подтверждён";b.disabled=false};return;}
-  if(s==="history"){showPanel("История",shell("История","Только подтверждённые данные пользователя.",'<div class="row"><span>Результаты</span><b>НЕТ ДАННЫХ</b></div><p class="muted">История не заполняется вымышленными результатами. Она появится после подключения проверенного источника данных.</p>'));return;}
+  if(s==="history"){api("/api/history").then(r=>showPanel("История",shell("История","Только подтверждённые данные.",r.ok&&r.history?.length?r.history.map(x=>'<div class="row"><span>'+x.time+'</span><b>'+x.multiplier+'x</b></div>').join(""):'<div class="row"><span>Подтверждённые результаты</span><b>НЕТ ДАННЫХ</b></div><p class="muted">История не заполняется вымышленными результатами. Она появится только после подтверждения источника данных.</p>')));return;}
   if(s==="analytics"){showPanel("Аналитика",shell("Аналитика","Статистика без автоматических ставок.",'<div class="metrics-grid">'+metric("СИСТЕМА","ONLINE","Mini App")+metric("СИГНАЛЫ","—","нет подтверждённых данных")+metric("РЕЖИМ","READ-ONLY","активен")+'</div>'));return;}
 
   if(s==="users"){if(role==="owner")adminUsers();return;}
