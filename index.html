@@ -8,22 +8,43 @@
 </head>
 <body>
 <main class="app">
-  <header class="topbar"><div><div class="eyebrow">LUCKY JET</div><h1>Сигналы</h1></div><div class="status"><span></span> ONLINE</div></header>
-  <section class="hero">
-    <div class="orbit"><div class="rocket">🚀</div></div>
-    <div class="multiplier" id="multiplier">—</div>
-    <div class="muted">аналитический индикатор</div>
-    <button id="signalBtn">ПОЛУЧИТЬ СИГНАЛ</button>
-    <div id="signalState" class="signal-state">Нажмите кнопку для анализа последних раундов</div>
+  <header class="topbar">
+    <div><div class="eyebrow">LUCKY JET</div><h1>Сигналы</h1></div>
+    <div class="status"><span></span> ONLINE</div>
+  </header>
+
+  <section id="accessGate" class="gate hidden">
+    <div class="gate-icon">🔐</div>
+    <h2>Доступ ограничен</h2>
+    <p>Для доступа сначала зарегистрируйтесь по официальной ссылке, затем вернитесь сюда.</p>
+    <a id="registerBtn" class="primary-link" href="https://one-vv4027.com/?open=register&p=ka7s" target="_blank">ЗАРЕГИСТРИРОВАТЬСЯ</a>
+    <button id="checkAccessBtn" class="secondary-btn">ПРОВЕРИТЬ ДОСТУП</button>
+    <div id="accessState" class="muted">Проверка регистрации пока требует подключения серверной проверки.</div>
   </section>
-  <section class="grid">
-    <button class="card" data-section="history"><b>История</b><span>Последние раунды</span></button>
-    <button class="card" data-section="analysis"><b>Анализ</b><span>Статистика</span></button>
-    <button class="card" data-section="profile"><b>Профиль</b><span>Аккаунт</span></button>
-    <button class="card" data-section="support"><b>Поддержка</b><span>Помощь</span></button>
-  </section>
-  <section id="panel" class="panel hidden"></section>
-  <footer>Только аналитика. Результаты не гарантируются.</footer>
+
+  <div id="appContent">
+    <section class="hero">
+      <div class="orbit"><div class="rocket">🚀</div></div>
+      <div class="multiplier" id="multiplier">—</div>
+      <div class="muted">аналитический индикатор</div>
+      <button id="signalBtn">ПОЛУЧИТЬ СИГНАЛ</button>
+      <div id="signalState" class="signal-state">Нажмите кнопку для анализа доступных данных</div>
+    </section>
+
+    <section class="grid">
+      <button class="card" data-section="history"><b>История</b><span>Раунды</span></button>
+      <button class="card" data-section="analysis"><b>Анализ</b><span>Статистика</span></button>
+      <button class="card" data-section="profile"><b>Профиль</b><span>Аккаунт</span></button>
+      <button class="card" data-section="support"><b>Поддержка</b><span>Помощь</span></button>
+      <button class="card" data-section="settings"><b>Настройки</b><span>Параметры</span></button>
+      <button class="card" data-section="ai"><b>AI-анализ</b><span>Объяснение данных</span></button>
+    </section>
+
+    <section id="ownerPanel" class="panel owner hidden"></section>
+    <section id="panel" class="panel hidden"></section>
+  </div>
+
+  <footer>Только аналитика и read-only режим. Результаты не гарантируются.</footer>
 </main>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="app.js"></script>
