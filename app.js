@@ -48,7 +48,7 @@ function renderOwnerPanel(){
  '<button data-admin="users">👥 Пользователи</button><button data-admin="access">🔐 Доступ</button>'+
  '<button data-admin="bot">⚙️ Бот</button><button data-admin="diag">🩺 Диагностика</button>'+
  '<button data-admin="logs">📋 Логи</button></div>';
- ownerPanel.classList.remove("hidden");
+ ownerPanel.classList.add("hidden");
  ownerPanel.querySelectorAll("[data-admin]").forEach(b=>b.onclick=()=>adminPanel(b.dataset.admin));
 }
 function adminPanel(type){
@@ -97,7 +97,12 @@ function bindSections(){
   if(s==="analytics"){showPanel("Аналитика",shell("Аналитика","Статистика без автоматических ставок.",'<div class="metrics-grid">'+metric("СИСТЕМА","ONLINE","Mini App")+metric("СИГНАЛЫ","—","нет подтверждённых данных")+metric("РЕЖИМ","READ-ONLY","активен")+'</div>'));return;}
 
   if(s==="users"){if(role==="owner")adminUsers();return;}\n  if(["access","bot","diag","logs"].includes(s)){if(role!=="owner")return;adminPanel(s);return;}
-  if(s==="owner"){if(role==="owner")ownerPanel.scrollIntoView({behavior:"smooth"});return;}
+  if(s==="owner"){
+  if(role!=="owner")return;
+  ownerPanel.classList.remove("hidden");
+  ownerPanel.scrollIntoView({behavior:"smooth",block:"start"});
+  return;
+}
   if(s==="profile")profileForm();
   if(s==="support")showPanel("Поддержка",'<p class="muted">Помощь по Mini App и регистрации. Торговые операции не выполняются.</p>');
   if(s==="settings")showPanel("Настройки",'<div class="row"><span>Язык</span><b>Русский</b></div><div class="row"><span>Тема</span><b>Тёмная</b></div><div class="row"><span>Режим</span><b>Read-only</b></div>');
