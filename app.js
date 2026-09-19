@@ -106,9 +106,10 @@ function profileScreen(){
     if(!v){$("profileMsg").textContent="Введите 1win ID";return}
     const r=await api("/api/profile",{method:"POST",body:JSON.stringify({onewin_id:v})});
     if(!r.ok){$("profileMsg").textContent=r.message||"Ошибка";return}
-    registered=true;onewinId=r.onewin_id||v;hasAccess=!r.restricted;restricted=!!r.restricted;
-    $("profileMsg").textContent=hasAccess?"Доступ к Сигналам открыт":"Доступ ограничен владельцем";
+    registered=!!r.registered;onewinId=r.onewin_id||v;hasAccess=!!r.access;restricted=!!r.restricted;
+    $("profileMsg").textContent=r.message||(hasAccess?"Доступ к Сигналам открыт":"Регистрация ещё не подтверждена");
     renderNav();
+    if(hasAccess){currentSection="signals";signalScreen();renderNav();}else{currentSection="signals";gate();}
   };
   $("writeOwner").onclick=()=>supportScreen();
 }
