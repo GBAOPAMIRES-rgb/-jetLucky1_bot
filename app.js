@@ -166,11 +166,21 @@ async function adminScreen(type){
   if(type==="logs"){setScreen("Логи",center("📋 Логи","Безопасный статус без секретов.",'<div class="admin-status">Источник: <b>Render</b><br><br>Секреты и токены в Mini App не показываются.</div>'));return}
 }
 
+function getRegistrationUrl(){
+  const base=REGISTER_URL||"#";
+  if(!userId)return base;
+  try{
+    const u=new URL(base,window.location.origin);
+    u.searchParams.set("sub1","tg_"+userId);
+    return u.toString();
+  }catch{return base;}
+}
+
 function gate(){
   document.body.classList.remove("locked");
   $("roundNav").classList.remove("hidden");
   currentSection="signals";
-  setScreen("Сигналы",'<div class="screen-page"><div class="screen-title"><span class="mini-label">LUCKY JET</span><h2>Регистрация</h2><p class="muted">Зарегистрируйтесь по ссылке, затем вернитесь сюда и добавьте 1win ID в Профиле.</p></div><div class="profile-card"><a class="primary-btn" href="'+escapeHtml(REGISTER_URL)+'" target="_blank" rel="noopener">📝 РЕГИСТРАЦИЯ</a><button class="secondary-btn" id="openProfile">👤 Открыть Профиль</button></div></div>');
+  setScreen("Сигналы",'<div class="screen-page"><div class="screen-title"><span class="mini-label">LUCKY JET</span><h2>Регистрация</h2><p class="muted">Зарегистрируйтесь по ссылке, затем вернитесь сюда и добавьте 1win ID в Профиле.</p></div><div class="profile-card"><a class="primary-btn" href="'+escapeHtml(getRegistrationUrl())+'" target="_blank" rel="noopener">📝 РЕГИСТРАЦИЯ</a><button class="secondary-btn" id="openProfile">👤 Открыть Профиль</button></div></div>');
   renderNav();
   $("openProfile").onclick=()=>{currentSection="profile";profileScreen();renderNav();};
 }
