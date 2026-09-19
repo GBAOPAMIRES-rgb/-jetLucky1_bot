@@ -1,5 +1,6 @@
 const tg=window.Telegram?.WebApp;
 if(tg){tg.ready();tg.expand();}
+
 const OWNER_ID="38263727";
 const REGISTER_URL="https://one-vv4027.com/?open=register&p=ka7s";
 const btn=document.getElementById("signalBtn"),state=document.getElementById("signalState"),mult=document.getElementById("multiplier"),hero=document.querySelector(".hero"),panel=document.getElementById("panel"),ownerPanel=document.getElementById("ownerPanel");
@@ -9,10 +10,7 @@ const userId=String(user?.id||"");
 const localOwner=userId===OWNER_ID;
 const demo=[1.18,1.42,2.07,1.09,3.21,1.67,1.31,4.06,1.24,2.42];
 
-function showPanel(title,html){
-  panel.innerHTML="<h2>"+title+"</h2>"+html;
-  panel.classList.remove("hidden");
-}
+function showPanel(title,html){panel.innerHTML="<h2>"+title+"</h2>"+html;panel.classList.remove("hidden");}
 function renderOwner(){
   if(!localOwner)return;
   ownerPanel.innerHTML='<div class="owner-title"><h2>Owner-панель</h2><span class="badge">OWNER</span></div>'+
@@ -29,21 +27,54 @@ function setAccess(allowed,reason){
   if(!allowed&&reason)accessState.textContent=reason;
   return allowed;
 }
+function showDiagnostic(text){
+  let box=document.getElementById("diagnosticBox");
+  if(!box){
+    box=document.createElement("div");
+    box.id="diagnosticBox";
+    box.className="panel";
+    gate.appendChild(box);
+  }
+  box.innerHTML="<h3>Диагностика доступа</h3>"+text;
+}
 document.getElementById("registerBtn").href=REGISTER_URL;
 
 async function verifyAccess(){
-  if(!tg?.initData){
-    setAccess(false,"Откройте Mini App именно внутри Telegram, чтобы проверить доступ.");
+  const hasTelegram=!!tg;
+  const hasInitData=!!tg?.initData;
+  const rawId=String(tg?.initDataUnsafe?.user?.id||"");
+  showDiagnostic(
+    '<div class="row"><span>Telegram WebApp</span><b>'+ (hasTelegram?"OK":"НЕТ") +'</b></div>'+
+    '<div class="row"><span>initData</span><b>'+ (hasInitData?"ПОЛУЧЕНА":"НЕТ") +'</b></div>'+
+    '<div class="row"><span>Telegram ID</span><b>'+ (rawId||"не определён") +'</b></div>'
+  );
+  if(!hasInitData){
+    setAccess(false,"Откройте Mini App именно внутри Telegram, чтобы получить данные пользователя.");
     return false;
   }
   try{
-    const response=await fetch("/api/access?init_data="+encodeURIComponent(tg.initData),{cache:"no-store"});
+    const response=await fetch("/api/access?init_data="+encodeURIComponent(tg.initData)+"&diag=1",{cache:"no-store"});
     const data=await response.json();
+    showDiagnostic(
+      '<div class="row"><span>Telegram WebApp</span><b>OK</b></div>'+
+      '<div class="row"><span>initData</span><b>ПОЛУЧЕНА</b></div>'+
+      '<div class="row"><span>Telegram ID</span><b>'+ (rawId||"не определён") +'</b></div>'+
+      '<div class="row"><span>Сервер</span><b>'+ (response.ok?"ОТВЕТИЛ":"ОШИБКА "+response.status) +'</b></div>'+
+      '<div class="row"><span>Доступ</span><b>'+ (data.access?"РАЗРЕШЁН":"ОГРАНИЧЕН") +'</b></div>'+
+      '<div class="row"><span>Причина</span><b>'+ (data.reason||data.error||"—") +'</b></div>'
+    );
     if(data.ok&&data.access){setAccess(true);return true;}
-    setAccess(false,"Для доступа сначала зарегистрируйтесь по официальной ссылке, затем вернитесь сюда.");
+    setAccess(false,"Доступ пока не подтверждён сервером.");
     return false;
   }catch(error){
-    setAccess(false,"Не удалось проверить доступ на сервере. Попробуйте открыть Mini App ещё раз.");
+    showDiagnostic(
+      '<div class="row"><span>Telegram WebApp</span><b>OK</b></div>'+
+      '<div class="row"><span>initData</span><b>ПОЛУЧЕНА</b></div>'+
+      '<div class="row"><span>Telegram ID</span><b>'+ (rawId||"не определён") +'</b></div>'+
+      '<div class="row"><span>Сервер</span><b>ОШИБКА ЗАПРОСА</b></div>'+
+      '<div class="row"><span>Причина</span><b>'+String(error?.message||error)+'</b></div>'
+    );
+    setAccess(false,"Не удалось проверить доступ на сервере.");
     return false;
   }
 }
