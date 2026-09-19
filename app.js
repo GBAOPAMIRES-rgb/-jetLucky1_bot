@@ -52,40 +52,21 @@ function renderOwnerPanel(){
  ownerPanel.querySelectorAll("[data-admin]").forEach(b=>b.onclick=()=>adminPanel(b.dataset.admin));
 }
 function adminPanel(type){
- const map={
- users:["Пользователи",'<p class="muted">Раздел Owner. Список пользователей подключается к серверному хранилищу.</p>'],
- access:["Управление доступом",'<div class="row"><span>Telegram WebApp</span><b>ПРОВЕРЯЕТСЯ</b></div><p class="muted">Права обычных пользователей не открывают Owner-функции.</p>'],
- bot:["Управление ботом",'<div class="row"><span>Режим</span><b>READ-ONLY</b></div><div class="row"><span>Торговые операции</span><b>ОТКЛЮЧЕНЫ</b></div>'],
- diag:["Диагностика",'<div class="row"><span>Telegram WebApp</span><b>'+(tg?"OK":"НЕТ")+'</b></div><div class="row"><span>initData</span><b>'+(tg?.initData?"ПОЛУЧЕНА":"НЕТ")+'</b></div><div class="row"><span>Telegram ID</span><b>'+userId+'</b></div>'],
- logs:["Логи",'<p class="muted">Серверные логи доступны в Render. В Mini App показываем только безопасный статус.</p>']
- };
- showPanel(map[type][0],map[type][1]);
+ if(type==="users"){adminUsers();return;}
+ if(type==="access"){showPanel("Управление доступом",shell("Управление доступом","Управление регистрацией и ограничениями пользователей.",'<div class="row"><span>Telegram</span><b>'+(tg?.initData?"OK":"НЕТ")+'</b></div><div class="row"><span>Telegram ID</span><b>'+userId+'</b></div><p class="muted">Ограничение пользователей выполняется через раздел «Пользователи».</p>'));return;}
+ if(type==="bot"){api("/api/bot/status").then(r=>{showPanel("Управление ботом",shell("Управление ботом","Административные настройки. Торговые операции отключены.",'<div class="row"><span>Режим</span><b>READ-ONLY</b></div><div class="row"><span>Статус</span><b>'+(r.paused?"ПРИОСТАНОВЛЕН":"РАБОТАЕТ")+'</b></div><button class="primary-btn" id="pauseBotBtn">'+(r.paused?"▶️ Возобновить бот":"⏸️ Приостановить бот")+'</button><div id="botMsg" class="signal-state"></div>'));$("pauseBotBtn").onclick=async()=>{const rr=await api("/api/bot/pause",{method:"POST",body:JSON.stringify({paused:!r.paused})});if(rr.ok)adminPanel("bot");else $("botMsg").textContent=rr.message||rr.error||"Ошибка";};});return;}
+ if(type==="diag"){api("/api/bot/status").then(r=>showPanel("Диагностика",shell("Диагностика","Безопасная проверка состояния Mini App.",'<div class="row"><span>Telegram WebApp</span><b>'+(tg?"OK":"НЕТ")+'</b></div><div class="row"><span>initData</span><b>'+(tg?.initData?"ПОЛУЧЕНА":"НЕТ")+'</b></div><div class="row"><span>Telegram ID</span><b>'+userId+'</b></div><div class="row"><span>Доступ</span><b>'+(hasAccess?"РАЗРЕШЁН":"ОГРАНИЧЕН")+'</b></div><div class="row"><span>Бот</span><b>'+(r.paused?"ПРИОСТАНОВЛЕН":"РАБОТАЕТ")+'</b></div>')));return;}
+ if(type==="logs"){showPanel("Логи",shell("Логи","Безопасный статус без секретов.",'<div class="row"><span>Источник</span><b>Render</b></div><p class="muted">Подробные серверные логи доступны Owner в Render. Секреты и токены здесь не показываются.</p>'));return;}
 }
 function gate(){document.body.classList.add("locked");$("appContent").innerHTML=`<section class="access-gate"><div class="gate-icon">🔐</div><span class="mini-label">LUCKY JET</span><h2>Доступ ограничен</h2><p class="muted">Сначала зарегистрируйтесь. После регистрации откройте Профиль и укажите свой 1win ID.</p><a class="primary-btn" href="${window.REGISTER_URL}" target="_blank" rel="noopener">📝 РЕГИСТРАЦИЯ</a><button class="secondary-btn" id="registeredBtn">Я уже зарегистрирован</button></section>`;$("registeredBtn").onclick=profileForm;}\nfunction profileForm(){showPanel("Профиль",`<div class="row"><span>Telegram</span><b>${user?.username?"@"+user.username:(user?.first_name||"Пользователь")}</b></div><div class="row"><span>Telegram ID</span><b>${userId}</b></div><div class="profile-input"><label>Ваш 1win ID</label><input id="onewinInput" inputmode="numeric" placeholder="Введите 1win ID" value="${onewinId}"><small>Укажите ID из приложения 1win после регистрации.</small></div><button class="primary-btn" id="saveOneWin">Сохранить 1win ID и получить доступ</button><div id="profileMsg" class="signal-state"></div>`);$("saveOneWin").onclick=async()=>{const v=$("onewinInput").value.trim(),r=await api("/api/profile",{method:"POST",body:JSON.stringify({onewin_id:v})});if(!r.ok){$("profileMsg").textContent=r.message||"Ошибка";return}registered=true;onewinId=r.onewin_id;hasAccess=!r.restricted;panel.classList.add("hidden");renderRoleUI()}}\nfunction adminUsers(){api("/api/users").then(r=>{const rows=(r.users||[]).map(u=>`<div class="user-admin-row"><div><b>${u.first_name||"Пользователь"} ${u.username?"• @"+u.username:""}</b><small>Telegram ID: ${u.telegram_id}<br>1win ID: ${u.onewin_id||"—"} • ${u.registered?"Зарегистрирован":"Не зарегистрирован"}</small></div><button data-uid="${u.telegram_id}" data-r="${!u.restricted}">${u.restricted?"Снять ограничение":"Ограничить"}</button></div>`).join("")||"<p class=\"muted\">Пока пользователей нет.</p>";showPanel("Пользователи",`<div class="user-count">Всего: <b>${r.count||0}</b></div>${rows}`);panel.querySelectorAll("[data-uid]").forEach(b=>b.onclick=async()=>{await api("/api/users/restrict",{method:"POST",body:JSON.stringify({telegram_id:b.dataset.uid,restricted:b.dataset.r==="true"})});adminUsers()})})}\nfunction renderRoleUI(){
- document.body.classList.toggle("owner-mode",role==="owner");
- $("roleBadge").textContent=role==="owner"?"OWNER":"USER";
- $("roleBadge").classList.toggle("owner",role==="owner");
- $("pageTitle").textContent="Главная";
- $("modeLabel").textContent=role==="owner"?"OWNER • ПОЛНЫЙ ДОСТУП":"LUCKY JET";
- $("welcomeTitle").innerHTML=role==="owner"?"Ваш центр<br><strong>Управление Lucky Jet</strong>":"Ваш центр<br><strong>Lucky Jet</strong>";
- $("sectionHint").textContent=role==="owner"?"Все функции Owner":"Доступные функции";
- const grid=$("sectionGrid");
- const items=role==="owner"?[
- ["🏠","Главная","Центр управления","home",1],["🚀","Сигналы","Аналитический центр","signals",1],
- ["⌁","Аналитика","Статистика","analytics",0],["◷","История","Доступные данные","history",0],
- ["👥","Пользователи","Список и активность","users",0],["🔐","Управление доступом","Права","access",0],["⚙️","Управление ботом","Режим","bot",0],
- ["🩺","Диагностика","Проверка системы","diag",0],["📋","Логи","Журнал событий","logs",0],["👑","Owner Panel","Полный контроль","owner",1],
- ["◉","Профиль","Аккаунт Owner","profile",0],["?","Поддержка","Помощь и связь","support",0],["⚙","Настройки","Параметры","settings",0]
+ document.body.classList.toggle("owner-mode",role==="owner");$("roleBadge").textContent=role==="owner"?"OWNER":"USER";$("roleBadge").classList.toggle("owner",role==="owner");$("pageTitle").textContent="Главная";$("modeLabel").textContent=role==="owner"?"OWNER • ПОЛНЫЙ ДОСТУП":"LUCKY JET";$("welcomeTitle").innerHTML=role==="owner"?"Ваш центр<br><strong>Управление Lucky Jet</strong>":"Ваш центр<br><strong>Lucky Jet</strong>";$("sectionHint").textContent=role==="owner"?"Все функции Owner":"Доступные функции";
+ const grid=$("sectionGrid");const items=role==="owner"?[
+ ["🏠","Главная","Центр управления","home",1],["🚀","Сигналы","Аналитический центр","signals",1],["📊","Аналитика","Статистика","analytics",0],["📜","История","Ваши данные","history",0],["👥","Пользователи","Все зарегистрированные","users",0],["🔐","Управление доступом","Ограничения","access",0],["⚙️","Управление ботом","Пауза и режим","bot",0],["🩺","Диагностика","Проверка системы","diag",0],["📋","Логи","Статус событий","logs",0],["👑","Owner Panel","Полный контроль","owner",1],["◉","Профиль","Аккаунт Owner","profile",0],["💬","Поддержка","Связь с Owner","support",0],["⚙","Настройки","Язык и часовой пояс","settings",0]
  ]:[
- ["🏠","Главная","Центр Lucky Jet","home",1],["🚀","Сигналы","Аналитический центр","signals",1],["◷","История","Ваши данные","history",0],["◉","Профиль","Ваш аккаунт","profile",0],["?","Поддержка","Помощь и связь","support",0],["⚙","Настройки","Параметры","settings",0]
- ];
+ ["🏠","Главная","Центр Lucky Jet","home",1],["🚀","Сигналы","Получение сигнала","signals",1],["📜","История","Ваши результаты","history",0],["◉","Профиль","1win ID и аккаунт","profile",0],["💬","Поддержка","Помощь и связь","support",0],["⚙","Настройки","Язык и часовой пояс","settings",0]];
  grid.innerHTML=items.map(x=>card(...x)).join("");
- $("quickActions").innerHTML=role==="owner"
- ? '<button data-section="users">👥 Пользователи</button><button data-section="bot">⚙️ Бот</button><button data-section="diag">🩺 Диагностика</button><button data-section="logs">📋 Логи</button>'
- : '<button data-section="signals">🚀 Сигнал</button><button data-section="history">◷ История</button><button data-section="profile">◉ Профиль</button><button data-section="support">? Поддержка</button>';
- $("bottomNav").innerHTML=role==="owner"
- ? nav("⌂","Главная","home")+nav("🚀","Сигналы","signals")+nav("⌁","Аналитика","analytics")+nav("👥","Пользователи","users")+nav("☰","Ещё","owner")
- : nav("⌂","Главная","home")+nav("🚀","Сигналы","signals")+nav("◷","История","history")+nav("◉","Профиль","profile")+nav("?","Поддержка","support");
+ $("quickActions").innerHTML=role==="owner"?'<button data-section="users">👥 Пользователи</button><button data-section="access">🔐 Доступ</button><button data-section="bot">⚙️ Бот</button><button data-section="diag">🩺 Диагностика</button>':'<button data-section="signals">🚀 Сигнал</button><button data-section="history">📜 История</button><button data-section="profile">◉ Профиль</button><button data-section="support">💬 Поддержка</button>';
+ $("bottomNav").innerHTML=role==="owner"?nav("⌂","Главная","home")+nav("🚀","Сигналы","signals")+nav("📊","Аналитика","analytics")+nav("👥","Пользователи","users")+nav("☰","Ещё","owner"):nav("⌂","Главная","home")+nav("🚀","Сигналы","signals")+nav("📜","История","history")+nav("◉","Профиль","profile")+nav("💬","Поддержка","support");
  bindSections();renderOwnerPanel();
 }
 function bindSections(){
@@ -93,7 +74,7 @@ function bindSections(){
   const s=b.dataset.section;
   if(s==="home"){panel.classList.add("hidden");ownerPanel.classList.add("hidden");window.scrollTo({top:0,behavior:"smooth"});return;}
   if(s==="signals"){showPanel("Сигналы",shell("Сигналы","Центральный экран Lucky Jet.",'<div class="signal-result"><span>ГОТОВ</span><small>Нажмите «Получить сигнал» для запуска анализа доступных данных.</small></div><button class="signal-circle-btn" style="margin-top:18px" onclick="document.getElementById(\'signalBtn\').click()"><span class="signal-circle-icon">🚀</span><b>ПОЛУЧИТЬ<br>СИГНАЛ</b></button>'));return;}
-  if(s==="history"){showPanel("История",shell("История","Реальные результаты появятся после подключения проверенного источника.",'<div class="row"><span>Данные</span><b>ОЖИДАЮТСЯ</b></div><div class="row"><span>Режим</span><b>READ-ONLY</b></div>'));return;}
+  if(s==="history"){showPanel("История",shell("История","Только подтверждённые данные пользователя.",'<div class="row"><span>Результаты</span><b>НЕТ ДАННЫХ</b></div><p class="muted">История не заполняется вымышленными результатами. Она появится после подключения проверенного источника данных.</p>'));return;}
   if(s==="analytics"){showPanel("Аналитика",shell("Аналитика","Статистика без автоматических ставок.",'<div class="metrics-grid">'+metric("СИСТЕМА","ONLINE","Mini App")+metric("СИГНАЛЫ","—","нет подтверждённых данных")+metric("РЕЖИМ","READ-ONLY","активен")+'</div>'));return;}
 
   if(s==="users"){if(role==="owner")adminUsers();return;}\n  if(["access","bot","diag","logs"].includes(s)){if(role!=="owner")return;adminPanel(s);return;}
@@ -104,7 +85,7 @@ function bindSections(){
   return;
 }
   if(s==="profile")profileForm();
-  if(s==="support")showPanel("Поддержка",'<p class="muted">Помощь по Mini App и регистрации. Торговые операции не выполняются.</p>');
+  if(s==="support"){showPanel("Поддержка",shell("Поддержка","Помощь по регистрации и работе Mini App.",'<p class="muted">Не отправляйте пароли, токены или другие секреты.</p><textarea id="supportText" class="support-text" maxlength="1000" placeholder="Опишите вопрос"></textarea><button class="primary-btn" id="sendSupport">💬 Написать Owner</button><div id="supportMsg" class="signal-state"></div>'));$("sendSupport").onclick=async()=>{const msg=$("supportText").value.trim();if(!msg){$("supportMsg").textContent="Введите сообщение";return}const r=await api("/api/support/message",{method:"POST",body:JSON.stringify({message:msg})});$("supportMsg").textContent=r.ok?"Сообщение отправлено Owner":"Не удалось отправить сообщение";};}
   if(s==="settings")showPanel("Настройки",'<div class="row"><span>Язык</span><b>Русский</b></div><div class="row"><span>Тема</span><b>Тёмная</b></div><div class="row"><span>Режим</span><b>Read-only</b></div>');
  });
 }
