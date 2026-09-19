@@ -173,14 +173,13 @@ function gate(){
   setScreen("Доступ",'<div class="access-gate"><div class="gate-icon">🔐</div><span class="mini-label">LUCKY JET</span><h2>Доступ ограничен</h2><p class="muted">Сначала зарегистрируйтесь по ссылке. После регистрации нажмите «Подтвердить регистрацию».</p><a class="primary-btn" href="'+escapeHtml(REGISTER_URL)+'" target="_blank" rel="noopener">📝 РЕГИСТРАЦИЯ</a><button class="secondary-btn" id="registeredBtn">✅ Подтвердить регистрацию</button></div>');
   $("registeredBtn").onclick=async()=>{
     const b=$("registeredBtn");b.disabled=true;b.textContent="Проверяем…";
-    const r=await api("/api/access");
+    const r=await api("/api/registration/confirm",{method:"POST",body:"{}"});
     b.disabled=false;b.textContent="✅ Подтвердить регистрацию";
     if(r.ok){
-      registered=!!r.registered;onewinId=r.onewin_id||"";restricted=!!r.restricted;hasAccess=!!r.access;
-      if(role==="owner"||r.role==="owner"||r.registered)profileScreen();
-      else profileScreen();
+      registered=true;onewinId=r.onewin_id||"";restricted=!!r.restricted;hasAccess=!!r.access;
+      profileScreen();
     }else{
-      $("screen").querySelector(".muted").textContent="Не удалось проверить аккаунт. Откройте Mini App заново и повторите.";
+      $("screen").querySelector(".muted").textContent="Не удалось подтвердить регистрацию. Проверьте соединение и повторите.";
     }
   };
 }
