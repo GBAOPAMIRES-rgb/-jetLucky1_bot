@@ -1,3 +1,5 @@
+window.addEventListener("error",function(){try{const a=document.getElementById("appContent"),g=document.getElementById("accessGate"),s=document.getElementById("accessState");if(a)a.classList.remove("hidden");if(g)g.classList.add("hidden");if(s)s.textContent="Интерфейс загружен с резервным режимом.";const f=document.getElementById("bootFooter");if(f)f.textContent="🚀 Lucky Jet • резервный режим";}catch(_){}});
+window.addEventListener("unhandledrejection",function(){try{const a=document.getElementById("appContent");if(a)a.classList.remove("hidden");}catch(_){}});
 const tg=window.Telegram?.WebApp;
 if(tg){tg.ready();tg.expand();}
 
