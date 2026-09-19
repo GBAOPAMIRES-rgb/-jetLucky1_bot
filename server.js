@@ -127,8 +127,9 @@ const server=http.createServer((req,res)=>{
     try{
       const d=JSON.parse(b||"{}"),u=ensureUser(r.user),one=String(d.onewin_id||"").trim();
       if(!/^\\d{4,30}$/.test(one))return json(res,400,{ok:false,error:"invalid_onewin_id",message:"Введите корректный 1win ID"});
-      u.onewin_id=one;u.registered=true;saveUsers();
-      json(res,200,{ok:true,access:!u.restricted,registered:true,onewin_id:one,restricted:u.restricted});
+      u.onewin_id=one;saveUsers();
+      const verified=Boolean(u.registered);
+      json(res,200,{ok:true,access:Boolean(verified&&!u.restricted),registered:verified,onewin_id:one,restricted:Boolean(u.restricted),verified:Boolean(verified),message:verified?"1win ID сохранён. Доступ к Сигналам открыт.":"1win ID сохранён. Ожидается подтверждение регистрации 1win."});
     }catch(e){json(res,400,{ok:false,error:"invalid_body"})}
   });return;
  }
