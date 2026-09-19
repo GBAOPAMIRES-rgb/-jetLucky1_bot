@@ -29,7 +29,7 @@ const userNav=[
   ["◉","Профиль","profile"],["☰","Ещё","more"]
 ];
 const ownerNav=[
-  ["⌂","Главная","home"],["🚀","Сигналы","signals"],["📊","Аналитика","analytics"],
+  ["📊","Аналитика","analytics"],["🚀","Сигналы","signals"],
   ["👥","Пользователи","users"],["☰","Ещё","more"]
 ];
 
@@ -174,7 +174,7 @@ function gate(){
 
 function navigate(section){
   if(section==="more"){currentSection="more";moreScreen();renderNav();return}
-  if(section==="home"){currentSection="home";homeScreen()}
+  if(section==="home"){currentSection="analytics";setScreen("Аналитика",center("📊 Аналитика","Статистика системы.",'<div class="metrics-grid">'+metric("СИСТЕМА","ONLINE","Mini App")+metric("СИГНАЛЫ","—","нет неподтверждённых данных")+metric("РЕЖИМ","READ-ONLY","активен")+'</div>'))}
   else if(section==="signals"){currentSection="signals";signalScreen()}
   else if(section==="history"){currentSection="history";historyScreen()}
   else if(section==="profile"){currentSection="profile";profileScreen()}
@@ -195,6 +195,13 @@ async function init(){
   if(!r.ok){if(userId&&OWNER_IDS.has(userId)){role="owner";hasAccess=true;registered=true;renderNav();homeScreen();return}gate();return}
   role=userId&&OWNER_IDS.has(userId)?"owner":r.role;
   hasAccess=role==="owner"?true:r.access;registered=role==="owner"?true:r.registered;restricted=role==="owner"?false:r.restricted;onewinId=r.onewin_id||"";
-  if(role==="owner"||hasAccess){renderNav();homeScreen()}else gate();
+  if(role==="owner"||hasAccess){
+    renderNav();
+    if(role==="owner"){
+      currentSection="analytics";
+      setScreen("Аналитика",center("📊 Аналитика","Статистика системы.",'<div class="metrics-grid">'+metric("СИСТЕМА","ONLINE","Mini App")+metric("СИГНАЛЫ","—","нет неподтверждённых данных")+metric("РЕЖИМ","READ-ONLY","активен")+'</div>'));
+      renderNav();
+    }else homeScreen();
+  }else gate();
 }
 init();
