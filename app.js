@@ -101,5 +101,5 @@ async function requestSignal(target){
  if(button)button.disabled=false;
 }
 if(btn)btn.onclick=()=>requestSignal(btn);
-async function init(){const c=await api("/api/config");window.REGISTER_URL=c.registrationUrl;const r=await api("/api/access");if(!r.ok){if(userId&&OWNER_IDS.has(userId)){role="owner";hasAccess=true;registered=true;restricted=false;renderRoleUI();return}gate();return}role=r.role;hasAccess=r.access;registered=r.registered;restricted=r.restricted;onewinId=r.onewin_id||"";if(role==="owner"||hasAccess){renderRoleUI()}else gate()}
+async function init(){const c=await api("/api/config");window.REGISTER_URL=c.registrationUrl;const r=await api("/api/access");if(!r.ok){if(userId&&OWNER_IDS.has(userId)){role="owner";hasAccess=true;registered=true;restricted=false;renderRoleUI();return}gate();return}if(userId&&OWNER_IDS.has(userId)){role="owner";hasAccess=true;registered=true;restricted=false;onewinId=r.onewin_id||"";renderRoleUI();return}role=r.role;hasAccess=r.access;registered=r.registered;restricted=r.restricted;onewinId=r.onewin_id||"";if(role==="owner"||hasAccess){renderRoleUI()}else gate()}
 init();
