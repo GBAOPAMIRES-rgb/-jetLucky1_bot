@@ -41,7 +41,7 @@ function adminPanel(type){
  };
  showPanel(map[type][0],map[type][1]);
 }
-function renderRoleUI(){
+function gate(){document.body.classList.add("locked");$("appContent").innerHTML=`<section class="access-gate"><div class="gate-icon">🔐</div><span class="mini-label">LUCKY JET</span><h2>Доступ ограничен</h2><p class="muted">Сначала зарегистрируйтесь. После регистрации откройте Профиль и укажите свой 1win ID.</p><a class="primary-btn" href="${window.REGISTER_URL}" target="_blank" rel="noopener">📝 РЕГИСТРАЦИЯ</a><button class="secondary-btn" id="registeredBtn">Я уже зарегистрирован</button></section>`;$("registeredBtn").onclick=profileForm;}\nfunction profileForm(){showPanel("Профиль",`<div class="row"><span>Telegram</span><b>${user?.username?"@"+user.username:(user?.first_name||"Пользователь")}</b></div><div class="row"><span>Telegram ID</span><b>${userId}</b></div><div class="profile-input"><label>Ваш 1win ID</label><input id="onewinInput" inputmode="numeric" placeholder="Введите 1win ID" value="${onewinId}"><small>Укажите ID из приложения 1win после регистрации.</small></div><button class="primary-btn" id="saveOneWin">Сохранить 1win ID и получить доступ</button><div id="profileMsg" class="signal-state"></div>`);$("saveOneWin").onclick=async()=>{const v=$("onewinInput").value.trim(),r=await api("/api/profile",{method:"POST",body:JSON.stringify({onewin_id:v})});if(!r.ok){$("profileMsg").textContent=r.message||"Ошибка";return}registered=true;onewinId=r.onewin_id;hasAccess=!r.restricted;panel.classList.add("hidden");renderRoleUI()}}\nfunction adminUsers(){api("/api/users").then(r=>{const rows=(r.users||[]).map(u=>`<div class="user-admin-row"><div><b>${u.first_name||"Пользователь"} ${u.username?"• @"+u.username:""}</b><small>Telegram ID: ${u.telegram_id}<br>1win ID: ${u.onewin_id||"—"} • ${u.registered?"Зарегистрирован":"Не зарегистрирован"}</small></div><button data-uid="${u.telegram_id}" data-r="${!u.restricted}">${u.restricted?"Снять ограничение":"Ограничить"}</button></div>`).join("")||"<p class=\"muted\">Пока пользователей нет.</p>";showPanel("Пользователи",`<div class="user-count">Всего: <b>${r.count||0}</b></div>${rows}`);panel.querySelectorAll("[data-uid]").forEach(b=>b.onclick=async()=>{await api("/api/users/restrict",{method:"POST",body:JSON.stringify({telegram_id:b.dataset.uid,restricted:b.dataset.r==="true"})});adminUsers()})})}\nfunction renderRoleUI(){
  document.body.classList.toggle("owner-mode",role==="owner");
  $("roleBadge").textContent=role==="owner"?"OWNER":"USER";
  $("roleBadge").classList.toggle("owner",role==="owner");
@@ -76,9 +76,9 @@ function bindSections(){
   if(s==="history"){showPanel("История",shell("История","Реальные результаты появятся после подключения проверенного источника.",'<div class="row"><span>Данные</span><b>ОЖИДАЮТСЯ</b></div><div class="row"><span>Режим</span><b>READ-ONLY</b></div>'));return;}
   if(s==="analytics"){showPanel("Аналитика",shell("Аналитика","Статистика без автоматических ставок.",'<div class="metrics-grid">'+metric("СИСТЕМА","ONLINE","Mini App")+metric("СИГНАЛЫ","—","нет подтверждённых данных")+metric("РЕЖИМ","READ-ONLY","активен")+'</div>'));return;}
 
-  if(["users","access","bot","diag","logs"].includes(s)){if(role!=="owner")return;adminPanel(s);return;}
+  if(s==="users"){if(role==="owner")adminUsers();return;}\n  if(["access","bot","diag","logs"].includes(s)){if(role!=="owner")return;adminPanel(s);return;}
   if(s==="owner"){if(role==="owner")ownerPanel.scrollIntoView({behavior:"smooth"});return;}
-  if(s==="profile")showPanel("Профиль",'<div class="row"><span>Telegram</span><b>'+(user?.first_name||"Пользователь")+'</b></div><div class="row"><span>ID</span><b>'+userId+'</b></div><div class="row"><span>Роль</span><b>'+role.toUpperCase()+'</b></div>');
+  if(s==="profile")profileForm();
   if(s==="support")showPanel("Поддержка",'<p class="muted">Помощь по Mini App и регистрации. Торговые операции не выполняются.</p>');
   if(s==="settings")showPanel("Настройки",'<div class="row"><span>Язык</span><b>Русский</b></div><div class="row"><span>Тема</span><b>Тёмная</b></div><div class="row"><span>Режим</span><b>Read-only</b></div>');
  });
@@ -87,4 +87,4 @@ btn.onclick=()=>{
  btn.disabled=true;document.querySelector(".hero").classList.add("spin");state.textContent="Проверяем доступные данные…";mult.textContent="…";
  setTimeout(()=>{document.querySelector(".hero").classList.remove("spin");mult.textContent="—";state.textContent="Нет подтверждённых данных для реального сигнала.";btn.disabled=false;$("mainStatus").textContent="ОЖИДАНИЕ";$("mainStatusSub").textContent="Источник данных не подтверждён";},700);
 };
-renderRoleUI();
+async function init(){const c=await api("/api/config");window.REGISTER_URL=c.registrationUrl;const r=await api("/api/access");if(!r.ok){gate();return}role=r.role;hasAccess=r.access;registered=r.registered;restricted=r.restricted;onewinId=r.onewin_id||"";if(role==="owner"||hasAccess){renderRoleUI()}else gate()}\ninit();
