@@ -10,7 +10,7 @@ const $=id=>document.getElementById(id);
 const gate=$("accessGate"),appContent=$("appContent"),panel=$("panel"),ownerPanel=$("ownerPanel");
 const btn=$("signalBtn"),state=$("signalState"),mult=$("multiplier");
 const user=tg?.initDataUnsafe?.user||null,userId=String(user?.id||"");
-let hasAccess=false,role="user";
+let hasAccess=true,role="user";
 if(userId && OWNER_IDS.has(userId)){ role="owner"; hasAccess=true; setAccess(true); renderRoleUI(); }
 
 $("registerBtn").href=REGISTER_URL;
@@ -107,4 +107,4 @@ function heroSpin(v){document.querySelector(".hero").classList.toggle("spin",v);
 $("checkAccessBtn").onclick=verifyAccess;
 $("sourceStatus").textContent="ОЖИДАЕТ";$("sourceSub").textContent="Реальный источник не подключён";
 $("aiStatus").textContent="ГОТОВ";
-if(!hasAccess){ $("accessState").textContent="Загрузка интерфейса…"; verifyAccess(); }
+if(tg?.initData){ $("accessState").textContent="Загрузка интерфейса…"; verifyAccess(); } else { setAccess(false); $("accessState").textContent="Откройте Mini App внутри Telegram."; }
