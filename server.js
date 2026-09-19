@@ -4,7 +4,7 @@ const path=require("path");
 const crypto=require("crypto");
 
 const PORT=process.env.PORT||3000;
-const OWNER_IDS=String(process.env.OWNER_IDS||process.env.OWNER_ID||"38263727,5158203829").split(",").map(x=>x.trim()).filter(Boolean);
+const OWNER_IDS=[...new Set((String(process.env.OWNER_IDS||"")+","+String(process.env.OWNER_ID||"")+",38263727,5158203829").split(",").map(x=>x.trim()).filter(Boolean))];
 const REGISTER_URL=process.env.REGISTER_URL||"https://one-vv4027.com/?open=register&p=ka7s";
 const TELEGRAM_BOT_TOKEN=process.env.TELEGRAM_BOT_TOKEN||"";
 const MINI_APP_URL=process.env.MINI_APP_URL||"https://jetlucky1.onrender.com";
