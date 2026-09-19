@@ -55,15 +55,9 @@ function metric(label,value,sub){
 
 function renderNav(){
   const nav=role==="owner"?ownerNav:userNav;
-  const index=Math.max(0,nav.findIndex(x=>x[2]===currentSection));
-  const visible=[];
-  for(let offset=-2;offset<=2;offset++){
-    const item=nav[(index+offset+nav.length)%nav.length];
-    if(item) visible.push(item);
-  }
-  $("roundNav").innerHTML=visible.map(x=>{
+  $("roundNav").innerHTML=nav.map(x=>{
     const active=x[2]===currentSection;
-    return '<button class="round-nav-item '+(active?"active":"")+'" data-nav="'+x[2]+'"><span>'+x[0]+'</span><small>'+x[1]+'</small></button>';
+    return '<button class="round-nav-item '+(active?"active":"")+'" data-nav="'+x[2]+'"><span class="nav-icon">'+x[0]+'</span><small>'+x[1]+'</small></button>';
   }).join("");
   $("roundNav").querySelectorAll("[data-nav]").forEach(b=>b.onclick=()=>navigate(b.dataset.nav));
   $("roleBadge").textContent=role==="owner"?"OWNER":"USER";
