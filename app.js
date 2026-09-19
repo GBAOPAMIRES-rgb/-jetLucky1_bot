@@ -25,8 +25,7 @@ async function api(endpoint,options={}){
 }
 
 const userNav=[
-  ["⌂","Главная","home"],["🚀","Сигналы","signals"],["📜","История","history"],
-  ["◉","Профиль","profile"],["☰","Ещё","more"]
+  ["🚀","Сигналы","signals"],["◉","Профиль","profile"]
 ];
 const ownerNav=[
   ["📊","Аналитика","analytics"],["🚀","Сигналы","signals"],
@@ -101,15 +100,18 @@ function homeScreen(){
 }
 
 function profileScreen(){
-  setScreen("Профиль",center("👤 Профиль","Ваш аккаунт и 1win ID.",
-    '<div class="profile-card"><div class="data-row"><span>Telegram</span><b>'+escapeHtml(user?.username?"@"+user.username:(user?.first_name||"Пользователь"))+'</b></div><div class="data-row"><span>Telegram ID</span><b>'+escapeHtml(userId)+'</b></div><label>1win ID</label><input id="onewinInput" inputmode="numeric" placeholder="Введите 1win ID" value="'+escapeHtml(onewinId)+'"><small>Укажите ID после регистрации.</small><button class="primary-btn" id="saveOneWin">Сохранить 1win ID</button><div id="profileMsg" class="signal-state"></div></div>'));
+  setScreen("Профиль",center("👤 Профиль","Укажите 1win ID после регистрации.",
+    '<div class="profile-card"><label>1win ID</label><input id="onewinInput" inputmode="numeric" placeholder="Введите 1win ID" value="'+escapeHtml(onewinId)+'"><small>Этот ID нужен для открытия доступа к Сигналам.</small><button class="primary-btn" id="saveOneWin">Сохранить 1win ID</button><button class="secondary-btn" id="writeOwner">💬 Написать владельцу</button><div id="profileMsg" class="signal-state"></div></div>'));
   $("saveOneWin").onclick=async()=>{
     const v=$("onewinInput").value.trim();
     if(!v){$("profileMsg").textContent="Введите 1win ID";return}
     const r=await api("/api/profile",{method:"POST",body:JSON.stringify({onewin_id:v})});
     if(!r.ok){$("profileMsg").textContent=r.message||"Ошибка";return}
-    registered=true;onewinId=r.onewin_id||v;hasAccess=!r.restricted;restricted=!!r.restricted;$("profileMsg").textContent="Данные сохранены";renderNav();
+    registered=true;onewinId=r.onewin_id||v;hasAccess=!r.restricted;restricted=!!r.restricted;
+    $("profileMsg").textContent=hasAccess?"Доступ к Сигналам открыт":"Доступ ограничен владельцем";
+    renderNav();
   };
+  $("writeOwner").onclick=()=>supportScreen();
 }
 
 function supportScreen(){
@@ -168,18 +170,28 @@ async function adminScreen(type){
 function gate(){
   document.body.classList.add("locked");
   $("roundNav").classList.add("hidden");
-  setScreen("Доступ",'<div class="access-gate"><div class="gate-icon">🔐</div><span class="mini-label">LUCKY JET</span><h2>Доступ ограничен</h2><p class="muted">Сначала зарегистрируйтесь, затем укажите 1win ID в Профиле.</p><a class="primary-btn" href="'+escapeHtml(REGISTER_URL)+'" target="_blank" rel="noopener">📝 РЕГИСТРАЦИЯ</a><button class="secondary-btn" id="registeredBtn">Я уже зарегистрирован</button></div>');
-  $("registeredBtn").onclick=profileScreen;
+  setScreen("Доступ",'<div class="access-gate"><div class="gate-icon">🔐</div><span class="mini-label">LUCKY JET</span><h2>Доступ ограничен</h2><p class="muted">Сначала зарегистрируйтесь по ссылке. После регистрации нажмите «Подтвердить регистрацию».</p><a class="primary-btn" href="'+escapeHtml(REGISTER_URL)+'" target="_blank" rel="noopener">📝 РЕГИСТРАЦИЯ</a><button class="secondary-btn" id="registeredBtn">✅ Подтвердить регистрацию</button></div>');
+  $("registeredBtn").onclick=async()=>{
+    const b=$("registeredBtn");b.disabled=true;b.textContent="Проверяем…";
+    const r=await api("/api/access");
+    b.disabled=false;b.textContent="✅ Подтвердить регистрацию";
+    if(r.ok){
+      registered=!!r.registered;onewinId=r.onewin_id||"";restricted=!!r.restricted;hasAccess=!!r.access;
+      if(role==="owner"||r.role==="owner"||r.registered)profileScreen();
+      else profileScreen();
+    }else{
+      $("screen").querySelector(".muted").textContent="Не удалось проверить аккаунт. Откройте Mini App заново и повторите.";
+    }
+  };
 }
 
 function navigate(section){
   if(section==="more"){currentSection="more";moreScreen();renderNav();return}
   if(section==="home"){currentSection="analytics";setScreen("Аналитика",center("📊 Аналитика","Статистика системы.",'<div class="metrics-grid">'+metric("СИСТЕМА","ONLINE","Mini App")+metric("СИГНАЛЫ","—","нет неподтверждённых данных")+metric("РЕЖИМ","READ-ONLY","активен")+'</div>'))}
   else if(section==="signals"){currentSection="signals";signalScreen()}
-  else if(section==="history"){currentSection="history";historyScreen()}
   else if(section==="profile"){currentSection="profile";profileScreen()}
   else if(section==="support"){currentSection="support";supportScreen()}
-  else if(section==="settings"){currentSection="settings";settingsScreen()}
+  else if(section==="settings"){if(role==="owner"){currentSection="settings";settingsScreen()}}
   else if(["analytics","users","access","bot","diag","logs","owner"].includes(section)){
     if(role!=="owner")return;
     currentSection=section;
@@ -196,12 +208,14 @@ async function init(){
   role=userId&&OWNER_IDS.has(userId)?"owner":r.role;
   hasAccess=role==="owner"?true:r.access;registered=role==="owner"?true:r.registered;restricted=role==="owner"?false:r.restricted;onewinId=r.onewin_id||"";
   if(role==="owner"||hasAccess){
+    document.body.classList.remove("locked");
+    $("roundNav").classList.remove("hidden");
     renderNav();
     if(role==="owner"){
       currentSection="analytics";
       setScreen("Аналитика",center("📊 Аналитика","Статистика системы.",'<div class="metrics-grid">'+metric("СИСТЕМА","ONLINE","Mini App")+metric("СИГНАЛЫ","—","нет неподтверждённых данных")+metric("РЕЖИМ","READ-ONLY","активен")+'</div>'));
       renderNav();
-    }else homeScreen();
+    }else profileScreen();
   }else gate();
 }
 init();
