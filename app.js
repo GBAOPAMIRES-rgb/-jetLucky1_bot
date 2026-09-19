@@ -44,12 +44,8 @@ function renderOwnerPanel(){
  '<div class="row"><span>Telegram ID</span><b>'+userId+'</b></div>'+
  '<div class="row"><span>Доступ</span><b>Полный</b></div>'+
  '<div class="row"><span>Торговые операции</span><b>ОТКЛЮЧЕНЫ</b></div>'+
- '<div class="quick-actions" style="margin-top:10px">'+
- '<button data-admin="users">👥 Пользователи</button><button data-admin="access">🔐 Доступ</button>'+
- '<button data-admin="bot">⚙️ Бот</button><button data-admin="diag">🩺 Диагностика</button>'+
- '<button data-admin="logs">📋 Логи</button></div>';
+ '<p class="muted" style="margin-top:12px">Административные функции находятся только в своих разделах: Пользователи, Управление доступом, Управление ботом, Диагностика и Логи.</p>';
  ownerPanel.classList.add("hidden");
- ownerPanel.querySelectorAll("[data-admin]").forEach(b=>b.onclick=()=>adminPanel(b.dataset.admin));
 }
 function adminPanel(type){
  if(type==="users"){adminUsers();return;}
@@ -68,7 +64,7 @@ function renderRoleUI(){
  ]:[
  ["🏠","Главная","Центр Lucky Jet","home",1],["🚀","Сигналы","Получение сигнала","signals",1],["📜","История","Ваши результаты","history",0],["◉","Профиль","1win ID и аккаунт","profile",0],["💬","Поддержка","Помощь и связь","support",0],["⚙","Настройки","Язык и часовой пояс","settings",0]];
  grid.innerHTML=items.map(x=>card(...x)).join("");
- $("quickActions").innerHTML="";
+ 
  $("bottomNav").innerHTML=role==="owner"?nav("⌂","Главная","home")+nav("🚀","Сигналы","signals")+nav("📊","Аналитика","analytics")+nav("👥","Пользователи","users")+nav("☰","Ещё","owner"):nav("⌂","Главная","home")+nav("🚀","Сигналы","signals")+nav("📜","История","history")+nav("◉","Профиль","profile")+nav("💬","Поддержка","support");
  bindSections();renderOwnerPanel();
 }
