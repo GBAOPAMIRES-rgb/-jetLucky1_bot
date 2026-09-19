@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="theme-color" content="#050814">
 <title>Lucky Jet</title>
-<link rel="stylesheet" href="style.css?v=7">
+<link rel="stylesheet" href="style.css?v=8">
 </head>
 <body>
 <main class="app">
@@ -14,60 +14,53 @@
   <div class="top-actions"><span id="roleBadge" class="role-badge">USER</span><div class="online"><i></i> ONLINE</div></div>
 </header>
 
-<section id="accessGate" class="gate hidden">
-  <div class="gate-icon">🔐</div><h2>Доступ ограничен</h2>
-  <p>Зарегистрируйтесь по официальной ссылке, затем повторите проверку.</p>
-  <a id="registerBtn" class="primary-link" href="#" target="_blank">ЗАРЕГИСТРИРОВАТЬСЯ</a>
-  <button id="checkAccessBtn" class="secondary-btn">ПРОВЕРИТЬ ДОСТУП</button>
-  <div id="accessState" class="muted">Проверяем доступ…</div>
+<div id="appContent">
+<section class="welcome">
+  <div><span class="mini-label" id="modeLabel">LUCKY JET</span>
+    <h2 id="welcomeTitle">Ваш центр<br><strong>Lucky Jet</strong></h2>
+    <p class="muted">Аналитический режим • без автоматических ставок</p>
+  </div>
+  <div class="mini-orb">🚀</div>
 </section>
 
-<div id="appContent">
-  <section class="welcome">
-    <div><span class="mini-label" id="modeLabel">АНАЛИТИЧЕСКИЙ ЦЕНТР</span><h2 id="welcomeTitle">Больше, чем просто сигналы<br><strong>Анализ. Статистика. AI.</strong></h2><p class="muted">Read-only режим — автоматические ставки не выполняются.</p></div>
-    <div class="mini-orb">🚀</div>
-  </section>
+<section class="stats">
+  <div><span>РЕЖИМ</span><b>READ-ONLY</b><small class="ok">● Активен</small></div>
+  <div><span>СИСТЕМА</span><b id="sourceStatus">ONLINE</b><small id="sourceSub">Mini App</small></div>
+  <div><span>AI</span><b id="aiStatus">ГОТОВ</b><small class="ok">● Доступен</small></div>
+  <div id="userCountCard" class="owner-only"><span>ПОЛЬЗОВАТЕЛИ</span><b>—</b><small>Owner</small></div>
+</section>
 
-  <section class="stats">
-    <div><span>РЕЖИМ</span><b>READ-ONLY</b><small class="ok">● Активен</small></div>
-    <div><span>ИСТОЧНИК</span><b id="sourceStatus">ОЖИДАЕТ</b><small id="sourceSub">Подключение данных</small></div>
-    <div><span>AI</span><b id="aiStatus">ГОТОВ</b><small class="ok">● Доступен</small></div>
-    <div id="userCountCard" class="owner-only"><span>ПОЛЬЗОВАТЕЛИ</span><b>—</b><small>После подключения БД</small></div>
-  </section>
+<section class="hero">
+  <div class="hero-head"><div><span class="mini-label">LUCKY JET</span><h2>Аналитический сигнал</h2></div><span class="live-pill">● LIVE</span></div>
+  <div class="rocket-wrap"><div class="glow"></div><div class="rocket">🚀</div></div>
+  <div class="multiplier" id="multiplier">—</div>
+  <div class="muted center">Сигнал будет показан после получения проверенных данных.</div>
+  <button id="signalBtn" class="signal-circle-btn" aria-label="Получить сигнал"><span class="signal-circle-icon">🚀</span><b>ПОЛУЧИТЬ<br>СИГНАЛ</b></button>
+  <div id="signalState" class="signal-state">Готов к анализу</div>
+</section>
 
-  <section class="hero">
-    <div class="hero-head"><div><span class="mini-label">СИГНАЛ</span><h2>Текущий аналитический индикатор</h2></div><span class="live-pill">● READ-ONLY</span></div>
-    <div class="rocket-wrap"><div class="glow"></div><div class="rocket">🚀</div></div>
-    <div class="multiplier" id="multiplier">—</div>
-    <div class="muted center">демонстрационный индикатор до подключения реального источника</div>
-    <button id="signalBtn" class="signal-circle-btn" aria-label="Получить сигнал"><span class="signal-circle-icon">🚀</span><b>ПОЛУЧИТЬ<br>СИГНАЛ</b></button>
-    <div id="signalState" class="signal-state">Готов к анализу доступных данных</div>
-  </section>
+<section class="dashboard-grid">
+  <div class="panel wide">
+    <div class="panel-head"><h2>Состояние</h2><span class="tag">READ-ONLY</span></div>
+    <div class="signal-result"><span id="mainStatus">ГОТОВ</span><small id="mainStatusSub">Ожидание проверенных данных</small></div>
+  </div>
+  <div class="panel"><div class="panel-head"><h2>Статистика</h2></div>
+    <div class="meters"><div><b>—</b><small>Успешность</small></div><div><b>—</b><small>Сигналов</small></div></div>
+  </div>
+  <div class="panel"><div class="panel-head"><h2>Последние данные</h2></div>
+    <div id="recentList"><div class="row"><span>Нет подтверждённых данных</span><b>—</b></div></div>
+  </div>
+  <div class="panel"><div class="panel-head"><h2>Быстрые действия</h2></div><div class="quick-actions" id="quickActions"></div></div>
+</section>
 
-  <section class="dashboard-grid">
-    <div class="panel wide">
-      <div class="panel-head"><h2>Сигнал</h2><span class="tag">LIVE</span></div>
-      <div class="signal-controls">
-        <button class="control-chip active">EUR/USD</button><button class="control-chip">GBP/USD</button><button class="control-chip">USD/JPY</button>
-      </div>
-      <div class="signal-meta"><span>Таймфрейм <b>M5</b></span><span>Рынок <b>ONLINE</b></span></div>
-      <div class="signal-result"><span>ОЖИДАНИЕ</span><small>Дождитесь подтверждённого анализа</small></div>
-    </div>
-    <div class="panel"><div class="panel-head"><h2>Дневная статистика</h2></div><div class="meters"><div><b>—</b><small>Успешность</small></div><div><b>—</b><small>Сигналов</small></div></div></div>
-    <div class="panel"><div class="panel-head"><h2>Последние сигналы</h2></div><div id="recentList"><div class="row"><span>Нет подтверждённых данных</span><b>—</b></div></div></div>
-    <div class="panel"><div class="panel-head"><h2>Быстрые действия</h2></div><div class="quick-actions" id="quickActions"></div></div>
-  </section>
-
-  <div class="section-title"><span>РАЗДЕЛЫ</span><b id="sectionHint">Доступные функции</b></div>
-  <section class="grid" id="sectionGrid"></section>
-
-  <section id="ownerPanel" class="panel owner owner-only hidden"></section>
-  <section id="panel" class="panel hidden"></section>
-
-  <nav class="bottom-nav" id="bottomNav"></nav>
+<div class="section-title"><span>РАЗДЕЛЫ</span><b id="sectionHint">Доступные функции</b></div>
+<section class="grid" id="sectionGrid"></section>
+<section id="ownerPanel" class="panel owner owner-only hidden"></section>
+<section id="panel" class="panel hidden"></section>
+<nav class="bottom-nav" id="bottomNav"></nav>
 </div>
-<footer id="bootFooter">🚀 Lucky Jet • аналитический режим • Read-only</footer>
+<footer>🚀 Lucky Jet • аналитический режим • Read-only</footer>
 </main>
-<script src="app.js?v=7"></script>
+<script src="app.js?v=8"></script>
 </body>
 </html>
