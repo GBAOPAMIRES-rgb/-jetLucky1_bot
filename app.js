@@ -91,7 +91,7 @@ function gate(){document.body.classList.add("locked");$("appContent").innerHTML=
 function bindSections(){
  document.querySelectorAll("[data-section]").forEach(b=>b.onclick=()=>{
   const s=b.dataset.section;
-  if(s==="home"){panel.classList.add("hidden");window.scrollTo({top:0,behavior:"smooth"});return;}
+  if(s==="home"){panel.classList.add("hidden");ownerPanel.classList.add("hidden");window.scrollTo({top:0,behavior:"smooth"});return;}
   if(s==="signals"){showPanel("Сигналы",shell("Сигналы","Центральный экран Lucky Jet.",'<div class="signal-result"><span>ГОТОВ</span><small>Нажмите «Получить сигнал» для запуска анализа доступных данных.</small></div><button class="signal-circle-btn" style="margin-top:18px" onclick="document.getElementById(\'signalBtn\').click()"><span class="signal-circle-icon">🚀</span><b>ПОЛУЧИТЬ<br>СИГНАЛ</b></button>'));return;}
   if(s==="history"){showPanel("История",shell("История","Реальные результаты появятся после подключения проверенного источника.",'<div class="row"><span>Данные</span><b>ОЖИДАЮТСЯ</b></div><div class="row"><span>Режим</span><b>READ-ONLY</b></div>'));return;}
   if(s==="analytics"){showPanel("Аналитика",shell("Аналитика","Статистика без автоматических ставок.",'<div class="metrics-grid">'+metric("СИСТЕМА","ONLINE","Mini App")+metric("СИГНАЛЫ","—","нет подтверждённых данных")+metric("РЕЖИМ","READ-ONLY","активен")+'</div>'));return;}
