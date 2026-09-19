@@ -57,7 +57,7 @@ function renderNav(){
   const nav=role==="owner"?ownerNav:userNav;
   $("roundNav").innerHTML=nav.map(x=>{
     const active=x[2]===currentSection;
-    return '<button class="round-nav-item '+(active?"active":"")+'" data-nav="'+x[2]+'"><span class="nav-icon">'+x[0]+'</span><small>'+x[1]+'</small></button>';
+    return '<button class="nav-item '+(active?"active":"")+'" data-nav="'+x[2]+'"><span>'+x[0]+'</span><small>'+x[1]+'</small></button>';
   }).join("");
   $("roundNav").querySelectorAll("[data-nav]").forEach(b=>b.onclick=()=>navigate(b.dataset.nav));
   $("roleBadge").textContent=role==="owner"?"OWNER":"USER";
@@ -74,14 +74,16 @@ function center(title,subtitle,body){
 }
 
 function signalScreen(){
-  setScreen("Сигналы",center("🚀 Сигналы","Только подтверждённые данные.",
-    '<div class="signal-orbit"><div class="signal-ring"></div><button class="signal-circle-btn" id="getSignal"><span class="signal-circle-icon">🚀</span><b>ПОЛУЧИТЬ<br>СИГНАЛ</b></button></div>'+
-    '<div class="signal-result"><span id="signalState">ГОТОВ</span><small id="signalSub">Нажмите центральную кнопку для проверки источника.</small></div>'));
+  setScreen("Сигналы",'<div class="screen-page"><div class="screen-title"><span class="mini-label">LUCKY JET</span><h2>Сигналы</h2><p class="muted">Получайте только подтверждённые данные.</p></div><div class="signal-panel"><div class="signal-card"><div class="signal-kicker">ГОТОВ К ПРОВЕРКЕ</div><button class="signal-main-btn" id="getSignal"><span class="rocket">🚀</span><span class="btn-copy"><b>ПОЛУЧИТЬ СИГНАЛ</b><small>Проверить доступный источник</small></span></button><div class="signal-info"><div class="info-tile"><span>СТАТУС</span><b id="signalState" class="status-ready">ГОТОВ</b></div><div class="info-tile"><span>ПОСЛЕДНИЙ</span><b id="signalMini">— —</b></div></div></div><div class="last-card"><div class="last-head"><b>Последний сигнал</b><span>ПОДТВЕРЖДЁННЫЕ ДАННЫЕ</span></div><div class="last-value" id="signalSub">— —</div></div></div></div>');
   $("getSignal").onclick=async()=>{
-    const b=$("getSignal");b.disabled=true;$("signalState").textContent="ПРОВЕРКА";$("signalSub").textContent="Проверяем подтверждённый источник данных…";
+    const b=$("getSignal");b.disabled=true;$("signalState").textContent="ПРОВЕРКА";$("signalState").className="status-wait";$("signalSub").textContent="Проверяем…";$("signalMini").textContent="ПРОВЕРКА";
     const r=await api("/api/signal");
-    if(r.ok&&r.signal){$("signalState").textContent="СИГНАЛ";$("signalSub").textContent="Коэффициент: "+r.signal.multiplier+"x";}
-    else{$("signalState").textContent="ОЖИДАНИЕ";$("signalSub").textContent="Источник данных не подтверждён. Вымышленный сигнал не показываем."}
+    if(r.ok&&r.signal){
+      const value=String(r.signal.multiplier)+"x";
+      $("signalState").textContent="СИГНАЛ";$("signalState").className="status-ready";$("signalSub").textContent=value;$("signalMini").textContent=value;
+    }else{
+      $("signalState").textContent="ОЖИДАНИЕ";$("signalState").className="status-wait";$("signalSub").textContent="— —";$("signalMini").textContent="НЕТ ДАННЫХ";
+    }
     b.disabled=false;
   };
 }
@@ -94,8 +96,7 @@ async function historyScreen(){
 
 function homeScreen(){
   const owner=role==="owner";
-  setScreen("Главная",center(owner?"👑 Owner":"🚀 Lucky Jet",owner?"Центр управления системой":"Ваш основной экран.",
-    '<div class="home-orb">🚀</div><h3 class="hero-title">'+(owner?"Управление Lucky Jet":"Добро пожаловать")+'</h3><p class="muted">'+(owner?"Все административные функции разнесены по отдельным разделам.":"Каждый раздел имеет свою отдельную функцию.")+'</p><div class="home-status"><span>СТАТУС</span><b>ONLINE</b></div>'));
+  setScreen("Главная",'<div class="screen-page"><div class="screen-title"><span class="mini-label">LUCKY JET</span><h2>Главная</h2><p class="muted">Центр Lucky Jet Mini App.</p></div><div class="home-card"><div class="home-hero"><div class="home-orb">🚀</div><h3 class="hero-title">'+(owner?"Управление Lucky Jet":"Lucky Jet")+'</h3><p class="muted">'+(owner?"Административные функции находятся в разделах Owner.":"Перейдите в «Сигналы», чтобы проверить источник данных.")+'</p></div><div class="home-status"><span>СТАТУС СИСТЕМЫ</span><b>ONLINE</b></div></div></div>');
 }
 
 function profileScreen(){
