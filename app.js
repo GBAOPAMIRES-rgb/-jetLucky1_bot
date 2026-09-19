@@ -27,7 +27,7 @@ function renderOwnerPanel(){
  '<div class="quick-actions" style="margin-top:10px">'+
  '<button data-admin="users">👥 Пользователи</button><button data-admin="access">🔐 Доступ</button>'+
  '<button data-admin="bot">⚙️ Бот</button><button data-admin="diag">🩺 Диагностика</button>'+
- '<button data-admin="logs">📋 Логи</button><button data-admin="ai">✦ Настройки AI</button></div>';
+ '<button data-admin="logs">📋 Логи</button></div>';
  ownerPanel.classList.remove("hidden");
  ownerPanel.querySelectorAll("[data-admin]").forEach(b=>b.onclick=()=>adminPanel(b.dataset.admin));
 }
@@ -37,8 +37,7 @@ function adminPanel(type){
  access:["Управление доступом",'<div class="row"><span>Telegram WebApp</span><b>ПРОВЕРЯЕТСЯ</b></div><p class="muted">Права обычных пользователей не открывают Owner-функции.</p>'],
  bot:["Управление ботом",'<div class="row"><span>Режим</span><b>READ-ONLY</b></div><div class="row"><span>Торговые операции</span><b>ОТКЛЮЧЕНЫ</b></div>'],
  diag:["Диагностика",'<div class="row"><span>Telegram WebApp</span><b>'+(tg?"OK":"НЕТ")+'</b></div><div class="row"><span>initData</span><b>'+(tg?.initData?"ПОЛУЧЕНА":"НЕТ")+'</b></div><div class="row"><span>Telegram ID</span><b>'+userId+'</b></div>'],
- logs:["Логи",'<p class="muted">Серверные логи доступны в Render. В Mini App показываем только безопасный статус.</p>'],
- ai:["Настройки AI",'<div class="row"><span>AI-анализ</span><b>ГОТОВ</b></div><div class="row"><span>Автоматические ставки</span><b>ОТКЛЮЧЕНЫ</b></div>']
+ logs:["Логи",'<p class="muted">Серверные логи доступны в Render. В Mini App показываем только безопасный статус.</p>']
  };
  showPanel(map[type][0],map[type][1]);
 }
@@ -53,7 +52,7 @@ function renderRoleUI(){
  const grid=$("sectionGrid");
  const items=role==="owner"?[
  ["🏠","Главная","Центр управления","home",1],["🚀","Сигналы","Аналитический центр","signals",1],
- ["⌁","Аналитика","Статистика","analysis",0],["◷","История","Доступные данные","history",0],
+ ["⌁","Аналитика","Статистика","analytics",0],["◷","История","Доступные данные","history",0],
  ["👥","Пользователи","Список и активность","users",0],["🔐","Управление доступом","Права","access",0],["⚙️","Управление ботом","Режим","bot",0],
  ["🩺","Диагностика","Проверка системы","diag",0],["📋","Логи","Журнал событий","logs",0],["👑","Owner Panel","Полный контроль","owner",1],
  ["◉","Профиль","Аккаунт Owner","profile",0],["?","Поддержка","Помощь и связь","support",0],["⚙","Настройки","Параметры","settings",0]
@@ -75,7 +74,7 @@ function bindSections(){
   if(s==="home"){panel.classList.add("hidden");window.scrollTo({top:0,behavior:"smooth"});return;}
   if(s==="signals"){showPanel("Сигналы",shell("Сигналы","Центральный экран Lucky Jet.",'<div class="signal-result"><span>ГОТОВ</span><small>Нажмите «Получить сигнал» для запуска анализа доступных данных.</small></div><button class="signal-circle-btn" style="margin-top:18px" onclick="document.getElementById(\'signalBtn\').click()"><span class="signal-circle-icon">🚀</span><b>ПОЛУЧИТЬ<br>СИГНАЛ</b></button>'));return;}
   if(s==="history"){showPanel("История",shell("История","Реальные результаты появятся после подключения проверенного источника.",'<div class="row"><span>Данные</span><b>ОЖИДАЮТСЯ</b></div><div class="row"><span>Режим</span><b>READ-ONLY</b></div>'));return;}
-  if(s==="analytics"){showPanel("Аналитика",shell("Аналитика","Статистика без автоматических ставок.",'<div class="metrics-grid">'+metric("СИСТЕМА","ONLINE","Mini App")+metric("СИГНАЛЫ","—","нет подтверждённых данных")+metric("AI","ГОТОВ","ожидает данные")+metric("РЕЖИМ","READ-ONLY","активен")+'</div>'));return;}
+  if(s==="analytics"){showPanel("Аналитика",shell("Аналитика","Статистика без автоматических ставок.",'<div class="metrics-grid">'+metric("СИСТЕМА","ONLINE","Mini App")+metric("СИГНАЛЫ","—","нет подтверждённых данных")+metric("РЕЖИМ","READ-ONLY","активен")+'</div>'));return;}
 
   if(["users","access","bot","diag","logs"].includes(s)){if(role!=="owner")return;adminPanel(s);return;}
   if(s==="owner"){if(role==="owner")ownerPanel.scrollIntoView({behavior:"smooth"});return;}
