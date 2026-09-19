@@ -46,11 +46,15 @@
 
   <section class="dashboard-grid">
     <div class="panel wide">
-      <div class="panel-head"><h2>Статистика</h2><span class="tag">ДЕМО</span></div>
-      <div class="chart"><div class="line"></div><span>12:00</span><span>13:00</span><span>14:00</span><span>15:00</span></div>
+      <div class="panel-head"><h2>Сигнал</h2><span class="tag">LIVE</span></div>
+      <div class="signal-controls">
+        <button class="control-chip active">EUR/USD</button><button class="control-chip">GBP/USD</button><button class="control-chip">USD/JPY</button>
+      </div>
+      <div class="signal-meta"><span>Таймфрейм <b>M5</b></span><span>Рынок <b>ONLINE</b></span></div>
+      <div class="signal-result"><span>ОЖИДАНИЕ</span><small>Дождитесь подтверждённого анализа</small></div>
     </div>
-    <div class="panel"><div class="panel-head"><h2>Показатели</h2></div><div class="meters"><div><b>—</b><small>Успешность</small></div><div><b>—</b><small>Активные</small></div></div></div>
-    <div class="panel"><div class="panel-head"><h2>Последние данные</h2></div><div id="recentList"></div></div>
+    <div class="panel"><div class="panel-head"><h2>Дневная статистика</h2></div><div class="meters"><div><b>—</b><small>Успешность</small></div><div><b>—</b><small>Сигналов</small></div></div></div>
+    <div class="panel"><div class="panel-head"><h2>Последние сигналы</h2></div><div id="recentList"><div class="row"><span>Нет подтверждённых данных</span><b>—</b></div></div></div>
     <div class="panel"><div class="panel-head"><h2>Быстрые действия</h2></div><div class="quick-actions" id="quickActions"></div></div>
   </section>
 
