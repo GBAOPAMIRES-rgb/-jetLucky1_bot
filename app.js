@@ -74,15 +74,17 @@ function center(title,subtitle,body){
 }
 
 function signalScreen(){
-  setScreen("Сигналы",'<div class="screen-page"><div class="screen-title"><span class="mini-label">LUCKY JET</span><h2>Сигналы</h2><p class="muted">Получайте только подтверждённые данные.</p></div><div class="signal-panel"><div class="signal-card"><div class="signal-kicker">ГОТОВ К ПРОВЕРКЕ</div><button class="signal-main-btn" id="getSignal"><span class="rocket">🚀</span><span class="btn-copy"><b>ПОЛУЧИТЬ СИГНАЛ</b><small>Проверить доступный источник</small></span></button><div class="signal-info"><div class="info-tile"><span>СТАТУС</span><b id="signalState" class="status-ready">ГОТОВ</b></div><div class="info-tile"><span>ПОСЛЕДНИЙ</span><b id="signalMini">— —</b></div></div></div><div class="last-card"><div class="last-head"><b>Последний сигнал</b><span>ПОДТВЕРЖДЁННЫЕ ДАННЫЕ</span></div><div class="last-value" id="signalSub">— —</div></div></div></div>');
+  setScreen("Сигналы",'<div class="screen-page"><div class="screen-title"><span class="mini-label">LUCKY JET</span><h2>Сигналы</h2><p class="muted">Получайте только подтверждённые данные.</p></div><div class="signal-panel"><div class="signal-card"><div class="signal-kicker">ГОТОВ К ПРОВЕРКЕ</div><button class="signal-main-btn" id="getSignal" aria-label="Получить сигнал"><span class="rocket" id="signalRocket">🚀</span><span class="signal-coefficient" id="signalCoefficient">— —</span></button><div class="signal-info"><div class="info-tile"><span>СТАТУС</span><b id="signalState" class="status-ready">ГОТОВ</b></div><div class="info-tile"><span>ПОСЛЕДНИЙ</span><b id="signalMini">— —</b></div></div></div><div class="last-card"><div class="last-head"><b>Последний сигнал</b><span>ПОДТВЕРЖДЁННЫЕ ДАННЫЕ</span></div><div class="last-value" id="signalSub">— —</div></div></div></div>');
   $("getSignal").onclick=async()=>{
-    const b=$("getSignal");b.disabled=true;$("signalState").textContent="ПРОВЕРКА";$("signalState").className="status-wait";$("signalSub").textContent="Проверяем…";$("signalMini").textContent="ПРОВЕРКА";
+    const b=$("getSignal"),coefficient=$("signalCoefficient"),rocket=$("signalRocket");
+    b.disabled=true;coefficient.textContent="…";rocket.textContent="🚀";$("signalState").textContent="ПРОВЕРКА";$("signalState").className="status-wait";$("signalSub").textContent="Проверяем…";$("signalMini").textContent="ПРОВЕРКА";
     const r=await api("/api/signal");
     if(r.ok&&r.signal){
       const value=String(r.signal.multiplier)+"x";
       $("signalState").textContent="СИГНАЛ";$("signalState").className="status-ready";$("signalSub").textContent=value;$("signalMini").textContent=value;
+      coefficient.textContent=value;rocket.textContent="🚀";
     }else{
-      $("signalState").textContent="ОЖИДАНИЕ";$("signalState").className="status-wait";$("signalSub").textContent="— —";$("signalMini").textContent="НЕТ ДАННЫХ";
+      $("signalState").textContent="ОЖИДАНИЕ";$("signalState").className="status-wait";$("signalSub").textContent="— —";$("signalMini").textContent="НЕТ ДАННЫХ";coefficient.textContent="— —";rocket.textContent="🚀";
     }
     b.disabled=false;
   };
