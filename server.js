@@ -65,7 +65,35 @@ const server=http.createServer((req,res)=>{
   if(OWNER_IDS.includes(id))return json(res,200,{ok:true,access:true,role:"owner",telegram_id:id,features:["signals","analysis","history","ai","users","access","bot","diagnostics","logs","owner","profile","support","settings"]});
   return json(res,200,{ok:true,access:false,role:"user",telegram_id:id,features:["signals","history","analysis","ai","profile","support","settings"],reason:"registration_verification_not_connected"});
  }
- if(url.pathname==="/api/profile"&&req.method==="POST"){ const r=validateInitData(req.headers["x-telegram-init-data"]||""); if(!r.ok)return json(res,401,{ok:false,error:r.error}); let b=""; req.on("data",c=>b+=c); req.on("end",()=>{try{const d=JSON.parse(b||"{}"),id=String(r.user.id),u=ensureUser(r.user),one=String(d.onewin_id||"").trim();if(!/^\\d{4,30}$/.test(one))return json(res,400,{ok:false,error:"invalid_onewin_id",message:"Введите корректный 1win ID"});u.onewin_id=one;u.registered=true;saveUsers();json(res,200,{ok:true,access:!u.restricted,registered:true,onewin_id:one,restricted:u.restricted})}catch(e){json(res,400,{ok:false,error:"invalid_body"})}});return;}\n if(url.pathname==="/api/users"&&req.method==="GET"){const r=validateInitData(req.headers["x-telegram-init-data"]||"");if(!r.ok||!OWNER_IDS.includes(String(r.user.id)))return json(res,403,{ok:false,error:"owner_only"});return json(res,200,{ok:true,count:Object.keys(users).length,users:Object.values(users)});}\n if(url.pathname==="/api/users/restrict"&&req.method==="POST"){const r=validateInitData(req.headers["x-telegram-init-data"]||"");if(!r.ok||!OWNER_IDS.includes(String(r.user.id)))return json(res,403,{ok:false,error:"owner_only"});let b="";req.on("data",c=>b+=c);req.on("end",()=>{try{const d=JSON.parse(b||"{}"),u=users[String(d.telegram_id)];if(!u)return json(res,404,{ok:false,error:"user_not_found"});u.restricted=Boolean(d.restricted);saveUsers();json(res,200,{ok:true,user:u})}catch(e){json(res,400,{ok:false,error:"invalid_body"})}});return;}\n if(url.pathname==="/telegram/webhook"){
+ if(url.pathname==="/api/profile"&&req.method==="POST"){
+  const r=validateInitData(req.headers["x-telegram-init-data"]||"");
+  if(!r.ok)return json(res,401,{ok:false,error:r.error});
+  let b="";req.on("data",x=>b+=x);req.on("end",()=>{
+    try{
+      const d=JSON.parse(b||"{}"),u=ensureUser(r.user),one=String(d.onewin_id||"").trim();
+      if(!/^\\d{4,30}$/.test(one))return json(res,400,{ok:false,error:"invalid_onewin_id",message:"Введите корректный 1win ID"});
+      u.onewin_id=one;u.registered=true;saveUsers();
+      json(res,200,{ok:true,access:!u.restricted,registered:true,onewin_id:one,restricted:u.restricted});
+    }catch(e){json(res,400,{ok:false,error:"invalid_body"})}
+  });return;
+ }
+ if(url.pathname==="/api/users"&&req.method==="GET"){
+  const r=validateInitData(req.headers["x-telegram-init-data"]||"");
+  if(!r.ok||!OWNER_IDS.includes(String(r.user.id)))return json(res,403,{ok:false,error:"owner_only"});
+  return json(res,200,{ok:true,count:Object.keys(users).length,users:Object.values(users)});
+ }
+ if(url.pathname==="/api/users/restrict"&&req.method==="POST"){
+  const r=validateInitData(req.headers["x-telegram-init-data"]||"");
+  if(!r.ok||!OWNER_IDS.includes(String(r.user.id)))return json(res,403,{ok:false,error:"owner_only"});
+  let b="";req.on("data",x=>b+=x);req.on("end",()=>{
+    try{
+      const d=JSON.parse(b||"{}"),u=users[String(d.telegram_id)];
+      if(!u)return json(res,404,{ok:false,error:"user_not_found"});
+      u.restricted=Boolean(d.restricted);saveUsers();json(res,200,{ok:true,user:u});
+    }catch(e){json(res,400,{ok:false,error:"invalid_body"})}
+  });return;
+ }
+if(url.pathname==="/telegram/webhook"){
   if(req.method!=="POST")return json(res,405,{ok:false,error:"method_not_allowed"});let body="";
   req.on("data",c=>{body+=c;if(body.length>100000)req.destroy()});req.on("end",async()=>{try{await handleTelegramUpdate(JSON.parse(body||"{}"));json(res,200,{ok:true})}catch(e){console.error("Telegram webhook error: "+String(e.message||e));json(res,500,{ok:false,error:"telegram_webhook_error"})}});return;
  }
