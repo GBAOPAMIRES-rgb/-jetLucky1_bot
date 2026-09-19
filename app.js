@@ -76,7 +76,7 @@ function bindSections(){
  document.querySelectorAll("[data-section]").forEach(b=>b.onclick=()=>{
   const s=b.dataset.section;
   if(s==="home"){panel.classList.add("hidden");ownerPanel.classList.add("hidden");window.scrollTo({top:0,behavior:"smooth"});return;}
-  if(s==="signals"){showPanel("Сигналы",shell("Сигналы","Центральный экран Lucky Jet.",'<div class="signal-result"><span>ГОТОВ</span><small>Нажмите «Получить сигнал» для запуска анализа доступных данных.</small></div><button class="signal-circle-btn" style="margin-top:18px" onclick="document.getElementById(\'signalBtn\').click()"><span class="signal-circle-icon">🚀</span><b>ПОЛУЧИТЬ<br>СИГНАЛ</b></button>'));return;}
+  if(s==="signals"){showPanel("Сигналы",shell("Сигналы","Единственное место получения сигнала.",'<div class="signal-result"><span id="sectionSignalState">ГОТОВ</span><small id="sectionSignalSub">Запрос будет выполнен только к подтверждённому источнику данных.</small></div><button class="signal-circle-btn" style="margin-top:18px" id="sectionSignalBtn"><span class="signal-circle-icon">🚀</span><b>ПОЛУЧИТЬ<br>СИГНАЛ</b></button>'));$("sectionSignalBtn").onclick=async()=>{const b=$("sectionSignalBtn");b.disabled=true;const r=await api("/api/signal");$("sectionSignalState").textContent=r.ok&&r.signal?"СИГНАЛ":"ОЖИДАНИЕ";$("sectionSignalSub").textContent=r.ok&&r.signal?("Коэффициент: "+r.signal.multiplier+"x"):"Источник данных не подтверждён";b.disabled=false};return;}
   if(s==="history"){showPanel("История",shell("История","Только подтверждённые данные пользователя.",'<div class="row"><span>Результаты</span><b>НЕТ ДАННЫХ</b></div><p class="muted">История не заполняется вымышленными результатами. Она появится после подключения проверенного источника данных.</p>'));return;}
   if(s==="analytics"){showPanel("Аналитика",shell("Аналитика","Статистика без автоматических ставок.",'<div class="metrics-grid">'+metric("СИСТЕМА","ONLINE","Mini App")+metric("СИГНАЛЫ","—","нет подтверждённых данных")+metric("РЕЖИМ","READ-ONLY","активен")+'</div>'));return;}
 
@@ -93,9 +93,13 @@ function bindSections(){
   if(s==="settings")showPanel("Настройки",shell("Настройки","Язык и часовой пояс.",'<div class="profile-input"><label>Язык</label><select id="languageSelect"><option value="ru">Русский</option><option value="en">English</option></select></div><div class="profile-input"><label>Часовой пояс</label><select id="timezoneSelect"><option value="Europe/Berlin">Europe/Berlin</option><option value="Europe/Moscow">Europe/Moscow</option><option value="Asia/Dushanbe">Asia/Dushanbe</option><option value="UTC">UTC</option></select><small>Время в истории и системных событиях будет отображаться по выбранному поясу.</small></div><div class="row"><span>Режим</span><b>Read-only</b></div><button class="primary-btn" id="saveSettingsBtn">Сохранить настройки</button><div id="settingsMsg" class="signal-state"></div>'));$("saveSettingsBtn").onclick=()=>{localStorage.setItem("luckyjet_timezone",$("timezoneSelect").value);localStorage.setItem("luckyjet_language",$("languageSelect").value);$("settingsMsg").textContent="Настройки сохранены"};const tz=localStorage.getItem("luckyjet_timezone");const lg=localStorage.getItem("luckyjet_language");if(tz)$("timezoneSelect").value=tz;if(lg)$("languageSelect").value=lg;
  });
 }
-btn.onclick=()=>{
- btn.disabled=true;document.querySelector(".hero").classList.add("spin");state.textContent="Проверяем доступные данные…";mult.textContent="…";
- setTimeout(()=>{document.querySelector(".hero").classList.remove("spin");mult.textContent="—";state.textContent="Нет подтверждённых данных для реального сигнала.";btn.disabled=false;$("mainStatus").textContent="ОЖИДАНИЕ";$("mainStatusSub").textContent="Источник данных не подтверждён";},700);
-};
+async function requestSignal(target){
+ const button=target||btn;if(button)button.disabled=true;
+ const result=await api("/api/signal");
+ if(result.ok&&result.signal){if(mult)mult.textContent=result.signal.multiplier+"x";if(state)state.textContent="Сигнал получен";if($("mainStatus"))$("mainStatus").textContent="СИГНАЛ";if($("mainStatusSub"))$("mainStatusSub").textContent="Подтверждённый источник данных";}
+ else {if(mult)mult.textContent="—";if(state)state.textContent="Нет подтверждённых данных для реального сигнала.";if($("mainStatus"))$("mainStatus").textContent="ОЖИДАНИЕ";if($("mainStatusSub"))$("mainStatusSub").textContent="Источник данных не подтверждён";}
+ if(button)button.disabled=false;
+}
+if(btn)btn.onclick=()=>requestSignal(btn);
 async function init(){const c=await api("/api/config");window.REGISTER_URL=c.registrationUrl;const r=await api("/api/access");if(!r.ok){if(userId&&OWNER_IDS.has(userId)){role="owner";hasAccess=true;registered=true;restricted=false;renderRoleUI();return}gate();return}role=r.role;hasAccess=r.access;registered=r.registered;restricted=r.restricted;onewinId=r.onewin_id||"";if(role==="owner"||hasAccess){renderRoleUI()}else gate()}
 init();
