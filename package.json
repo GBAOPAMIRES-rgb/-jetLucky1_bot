@@ -5,7 +5,7 @@
   "description": "Lucky Jet Telegram Mini App backend (read-only)",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node -e \"require(\u0027./socket_probe\u0027).run().catch(e=>console.error(\u0027socket_probe_failed\u0027,e.message)); require(\u0027./server\u0027)\""
   },
   "dependencies": {
     "ws": "8.18.3",
