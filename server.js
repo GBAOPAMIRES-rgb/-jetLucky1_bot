@@ -462,9 +462,8 @@ async function probeLuckyJetClientBundleAtStartup(){
     }});
     const html=await page.text();
     const pageScripts=[];
-    for(const m of html.matchAll(/(?:https?:\\/\\/[^"'\\s<>]+|\\/[^"'\\s<>]+)\\.js(?:[?#][^"'\\s<>]*)?/gi)){if(pageScripts.length<60)pageScripts.push(m[0]);addUrl(m[0]);}
-    for(const m of html.matchAll(/(?:src|href)=["']([^"']+)["']/gi)){if(pageScripts.length<60&&/\\.js(?:[?#]|$)/i.test(m[1]))pageScripts.push(m[1]);addUrl(m[1]);}
-    console.log("Lucky Jet page assets",JSON.stringify({http_status:page.status,bytes:html.length,scripts:[...new Set(pageScripts)].slice(0,60),has_lucky:/lucky/i.test(html),has_user_token:/user\\/token/i.test(html)}));
+    for(const token of html.split(/[\\s"'<>]+/)){if(token.includes(".js")){if(pageScripts.length<60)pageScripts.push(token);addUrl(token);}}
+    console.log("Lucky Jet page assets",JSON.stringify({http_status:page.status,bytes:html.length,scripts:[...new Set(pageScripts)].slice(0,60),has_lucky:html.toLowerCase().includes("lucky"),has_user_token:html.includes("/user/token")}));
     addUrl("/lucky/536.3866f5e05722c4b2f9d0.bundle.js");
 
     const hits=[];
