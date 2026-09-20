@@ -89,16 +89,17 @@ async function probeLuckyJetUserTokenAtStartup(){
     console.log("Lucky Jet user-token probe",JSON.stringify({configured:false,reason:"ssid_not_configured"}));
     return;
   }
-  const url="https://crash-gateway-grm-cr.gamedev-tech.cc/user/token";
+  const endpoints=["/user/token","/user/auth"];
   const attempts=[
     {name:"authorization_bearer",headers:{"Authorization":"Bearer "+LUCKYJET_SSID}},
     {name:"x-ssid",headers:{"X-SSID":LUCKYJET_SSID}},
     {name:"x-auth-token",headers:{"X-Auth-Token":LUCKYJET_SSID}},
     {name:"x-token",headers:{"X-Token":LUCKYJET_SSID}}
   ];
-  for(const a of attempts){
+  for(const endpoint of endpoints){
+    for(const a of attempts){
     try{
-      const rr=await fetch(url,{method:"POST",headers:{"Accept":"application/json","Content-Type":"application/json",...a.headers},body:"{}"});
+      const rr=await fetch("https://crash-gateway-grm-cr.gamedev-tech.cc"+endpoint,{method:"POST",headers:{"Accept":"application/json","Content-Type":"application/json",...a.headers},body:"{}"});
       const raw=await rr.json().catch(()=>null);
       const obj=raw&&typeof raw==="object"?raw:{};
       const candidates=[
@@ -108,7 +109,7 @@ async function probeLuckyJetUserTokenAtStartup(){
       const issued=candidates[0]||"";
       const safeKeys=Object.keys(obj).slice(0,30);
       console.log("Lucky Jet user-token probe",JSON.stringify({
-        method:a.name,http_status:rr.status,ok:rr.ok,
+        endpoint,method:a.name,http_status:rr.status,ok:rr.ok,
         response_keys:safeKeys,credential_issued:Boolean(issued),
         credential_length:issued.length||null,
         credential_looks_like_jwt:/^[^.]+\\.[^.]+\\.[^.]+$/.test(issued)
@@ -127,7 +128,8 @@ async function probeLuckyJetUserTokenAtStartup(){
         if(lifecycle?.authenticated||lifecycle?.subscribed||Number(lifecycle?.publications||0)>0)return;
       }
     }catch(e){
-      console.log("Lucky Jet user-token probe",JSON.stringify({method:a.name,ok:false,error:String(e.message||e)}));
+      console.log("Lucky Jet user-token probe",JSON.stringify({endpoint,method:a.name,ok:false,error:String(e.message||e)}));
+    }
     }
   }
 }
