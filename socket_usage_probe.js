@@ -21,6 +21,7 @@ function paths(js){
 async function run(){
   const main="https://1wmljx.life/resources/v1/app/assets/main-CYh8X1YZ.js";
   const direct="https://1wmljx.life/resources/v1/app/assets/plugin-server-updates-dVq29KWs.js";
+  try{const sr=await get("https://1wmljx.life/resources/v1/app/assets/socket-io-adapter-DSFgpOt0.js"),js=sr.text; const terms=["auth:","query:","withCredentials","transports","websocket","extraHeaders","path:","socket.io","io("]; const hits=[]; for(const term of terms){let p=0,n=0; while((p=js.indexOf(term,p))>=0&&n<8){hits.push({term,pos:p,snippet:clean(js.slice(Math.max(0,p-1200),Math.min(js.length,p+2200)))});p+=term.length;n++;}} console.log("Lucky Jet Socket.IO adapter analysis",JSON.stringify({status:sr.status,bytes:js.length,hits}));}catch(e){console.log("Lucky Jet Socket.IO adapter analysis",JSON.stringify({ok:false,error:String(e.message||e)}));}
   try{const dr=await get(direct),js=dr.text; const terms=["new S(","new Socket","socket-io-adapter","query:","auth:","xorigin","app:\"frontend\"","M()"]; const hits=[]; for(const term of terms){let p=0,n=0; while((p=js.indexOf(term,p))>=0&&n<8){hits.push({term,pos:p,snippet:clean(js.slice(Math.max(0,p-1400),Math.min(js.length,p+2600)))});p+=term.length;n++;}} console.log("Lucky Jet direct server-updates analysis",JSON.stringify({status:dr.status,bytes:js.length,hits}));}catch(e){console.log("Lucky Jet direct server-updates analysis",JSON.stringify({ok:false,error:String(e.message||e)}));}
   try{
     const mr=await get(main), urls=paths(mr.text), matches=[];
