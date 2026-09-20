@@ -453,7 +453,7 @@ async function probeLuckyJetStateAtStartup(){
     if(v===null)return null;
     if(typeof v==="string"){
       if(v.length>120)return "<string length "+v.length+">";
-      if(/^https?:\\/\\//i.test(v)||v.includes("token")||v.includes("ssid")||v.includes("session"))return "<redacted string length "+v.length+">";
+      if(v.startsWith("http://")||v.startsWith("https://")||v.includes("token")||v.includes("ssid")||v.includes("session"))return "<redacted string length "+v.length+">";
       return v;
     }
     if(Array.isArray(v))return v.slice(0,10).map(x=>safe(x,depth+1));
