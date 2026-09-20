@@ -137,7 +137,7 @@ async function probeLuckyJetUserTokenAtStartup(){
   }
 }
 async function probeLuckyJetLifecycleCredential(credential){
-  const channel=String(process.env.LUCKYJET_CENTRIFUGO_CHANNEL||"lucky-jet-94").trim();
+  const configuredChannel=String(process.env.LUCKYJET_CENTRIFUGO_CHANNEL||"").trim();
   const urls=[LUCKYJET_WS_URL];
   const result=await new Promise(resolve=>{
     let ws=null,opened=false,authenticated=false,subscribed=false,pubs=0,events=[],error=null;
@@ -700,8 +700,9 @@ async function probeLuckyJetProtocolAtStartup(){
   const addCredential=(kind,value)=>{
     if(value&&!credentials.some(x=>x.value===value))credentials.push({kind,value});
   };
-  addCredential("configured_token",configuredToken);
+  // Prefer the user-provided SSID. It is the only credential used for the read-only Lucky Jet stream.
   addCredential("ssid",configuredSsid);
+  if(!configuredSsid) addCredential("configured_token",configuredToken);
 
   // Some SSID formats are JSON objects containing a session/access token.
   if(configuredSsid){
@@ -719,6 +720,7 @@ async function probeLuckyJetProtocolAtStartup(){
   }
 
   const inferred=LUCKYJET_WS_URL.replace(/\/websocket\/lifecycle\/?$/,"/connection/websocket");
+  const jwtChannels=(cred)=>{try{const p=cred.value.split(".");if(p.length!==3)return [];const raw=p[1].replace(/-/g,"+").replace(/_/g,"/");const x=JSON.parse(Buffer.from(raw.padEnd(Math.ceil(raw.length/4)*4,"="),"base64").toString("utf8"));return Array.isArray(x.channels)?x.channels.filter(v=>typeof v==="string"&&v.trim()).slice(0,10):[]}catch{return []}};
   const urls=[...new Set([LUCKYJET_CENTRIFUGO_WS_URL||null,LUCKYJET_WS_URL,inferred].filter(Boolean))];
   const origins=["","https://1wmljx.life"];
 
@@ -773,8 +775,10 @@ async function probeLuckyJetProtocolAtStartup(){
                   }else if(m.connect){
                     connected=true;events.push("connect");
                     const subs=m.connect.subs||{};
-                    if(subs[channel]){subscribed=true;events.push("subscribed")}
-                    else{try{ws.send(JSON.stringify({id:2,subscribe:{channel}}))}catch(e){error=String(e.message||e)}}
+                    const channels=[...(configuredChannel?[configuredChannel]:[]),...jwtChannels(cred)].filter((v,i,a)=>a.indexOf(v)===i).slice(0,10);
+                    const matching=channels.find(ch=>subs[ch]);
+                    if(matching){subscribed=true;events.push("subscribed:"+matching)}
+                    else if(channels.length){try{ws.send(JSON.stringify({id:2,subscribe:{channel:channels[0]}}))}catch(e){error=String(e.message||e)}}
                   }else if(m.subscribe){subscribed=true;events.push("subscribed")}
                   else if(m.pub){pubs++;events.push("pub")}
                 }catch{events.push("unparsed")}
