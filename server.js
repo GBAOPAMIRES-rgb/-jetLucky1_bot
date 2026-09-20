@@ -83,7 +83,7 @@ const server=http.createServer((req,res)=>{
     req.on("data",x=>body+=x);
     req.on("end",()=>handlePostback(body));
   }else handlePostback("");
-  function handlePostback(raw){
+  async function handlePostback(raw){
     try{
       let bodyParams=new URLSearchParams();
       if(raw){try{bodyParams=new URLSearchParams(raw)}catch{}}
