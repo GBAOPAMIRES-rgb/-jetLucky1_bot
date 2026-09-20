@@ -443,6 +443,54 @@ if(url.pathname==="/telegram/webhook"){
  }
  if(req.method!=="GET")return json(res,405,{ok:false,error:"method_not_allowed"});return serveStatic(req,res);
 });
+async function probeLuckyJetClientBundleAtStartup(){
+  const pageUrl="https://1play.gamedev-tech.cc/casino";
+  try{
+    const page=await fetch(pageUrl,{headers:{
+      "Accept":"text/html,application/xhtml+xml",
+      "User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/152 Safari/537.36"
+    }});
+    const html=await page.text();
+    const bundles=[...new Set([...html.matchAll(/(?:src|href)=[\"']([^\"']*\/lucky\/[^\\"']+\.js)[\"']/gi)].map(m=>m[1]).filter(Boolean))].slice(0,10);
+    const fallback="https://1play.gamedev-tech.cc/lucky/536.3866f5e05722c4b2f9d0.bundle.js";
+    const urls=[...new Set(bundles.map(x=>x.startsWith("http")?x:new URL(x,pageUrl).href).concat(fallback))];
+    const clean=(s)=>String(s||"")
+      .replace(/[A-Za-z0-9_-]{40,}/g,"<redacted-long>")
+      .replace(/(Bearer\\s+)[^\\s"'<>]+/gi,"$1<redacted>")
+      .replace(/(ssid|token|session|authorization)(\\s*[:=]\\s*)["'][^"']{20,}["']/gi,"$1$2\"<redacted>\"");
+    const targets=[/user\\/token/i,/user\\/auth/i,/websocket\\/lifecycle/i,/websocket\\/secondary/i,/\\bssid\\b/i,/authorization/i,/centrifugo/i,/subscribe/i,/changeCoefficient/i];
+    for(const url of urls){
+      try{
+        const rr=await fetch(url,{headers:{
+          "Accept":"*/*",
+          "Referer":pageUrl+"/",
+          "Origin":"https://1play.gamedev-tech.cc",
+          "User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/152 Safari/537.36"
+        }});
+        const js=await rr.text();
+        const matches=[];
+        for(const re of targets){
+          let m;
+          while((m=re.exec(js))!==null && matches.length<40){
+            const start=Math.max(0,m.index-260),end=Math.min(js.length,m.index+700);
+            const snippet=clean(js.slice(start,end));
+            if(!matches.some(x=>x.term===re.source&&x.snippet===snippet))matches.push({term:re.source,snippet});
+          }
+        }
+        console.log("Lucky Jet client bundle probe",JSON.stringify({
+          url,http_status:rr.status,ok:rr.ok,bytes:js.length,
+          matches:matches.slice(0,40)
+        }));
+        if(matches.length)return;
+      }catch(e){
+        console.log("Lucky Jet client bundle probe",JSON.stringify({url,ok:false,error:String(e.message||e)}));
+      }
+    }
+  }catch(e){
+    console.log("Lucky Jet client bundle probe",JSON.stringify({ok:false,error:String(e.message||e)}));
+  }
+}
+
 async function probeLuckyJetGatewayAtStartup(){
   const origins=["","https://1wmljx.life"];
   for(const origin of origins){
@@ -543,14 +591,12 @@ async function probeLuckyJetProtocolAtStartup(){
     for(const url of urls){
       for(const origin of origins){
         for(const mode of ["json_connect","authorization_bearer","x_auth_token","x_token"]){
-          authMode=mode;
           try{
           const result=await new Promise(resolve=>{
             let settled=false,connected=false,subscribed=false,pubs=0,events=[],error=null,ws=null;
             const finish=x=>{if(settled)return;settled=true;try{ws?.close()}catch{};resolve(x)};
             const timer=setTimeout(()=>finish({opened:connected||subscribed,authenticated:connected,subscribed,pubs,events:[...new Set(events)].slice(0,20),error:error||"timeout",url,origin:origin||null}),10000);
-            const authModes=["json_connect","authorization_bearer","x_auth_token","x_token"];
-            let authMode="json_connect";
+            const authMode=mode;
             const makeHeaders=()=>{
               const h={};
               if(origin)h.Origin=origin;
@@ -603,4 +649,4 @@ async function probeLuckyJetProtocolAtStartup(){
   }
   console.log("Lucky Jet AUTH NOT CONFIRMED",JSON.stringify({credentials_tested:credentials.map(summarizeCredential),channel,urls,reason:"all read-only credential attempts were rejected or did not authenticate"}));
 }
-server.listen(PORT,()=>{console.log("jetLucky1 server listening on "+PORT+" owners="+OWNER_IDS.length);configureTelegram();probeLuckyJetGatewayAtStartup();probeLuckyJetHistoryAtStartup();probeLuckyJetProtocolAtStartup();probeLuckyJetUserTokenAtStartup();});
+server.listen(PORT,()=>{console.log("jetLucky1 server listening on "+PORT+" owners="+OWNER_IDS.length);configureTelegram();probeLuckyJetGatewayAtStartup();probeLuckyJetHistoryAtStartup();probeLuckyJetClientBundleAtStartup();probeLuckyJetProtocolAtStartup();probeLuckyJetUserTokenAtStartup();});
