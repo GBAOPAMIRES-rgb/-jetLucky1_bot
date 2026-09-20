@@ -257,7 +257,9 @@ const server=http.createServer(async(req,res)=>{
         if(index>=protocolUrls.length){finish({error:"centrifugo_auth_not_confirmed",message:timeoutMessage()});return}
         activeUrl=protocolUrls[index++];
         opened=false;connected=false;subscribed=false;
-        try{ws=new WebSocket(activeUrl,{handshakeTimeout:7000});}catch(e){events.push("socket_create_error");attempt();return}
+        let attemptDone=false;
+        const retry=()=>{if(attemptDone||settled)return;attemptDone=true;try{ws?.removeAllListeners()}catch{};try{ws?.close()}catch{};attempt()};
+        try{ws=new WebSocket(activeUrl,{handshakeTimeout:7000});}catch(e){events.push("socket_create_error");retry();return}
         ws.once("open",()=>{opened=true;send({id:1,connect:{token,name:"jetLucky1"}})});
         ws.on("message",raw=>{
           const text=Buffer.isBuffer(raw)?raw.toString("utf8"):String(raw);
