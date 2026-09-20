@@ -16,6 +16,7 @@ const PARSE_LUCKYJET_URL="https://api.parse.bot/scraper/dfcd37a4-42ee-4914-824f-
 const WEBHOOK_URL=process.env.WEBHOOK_URL||"https://jetlucky1.onrender.com/telegram/webhook";
 const LUCKYJET_SSID=String(process.env.LUCKYJET_SSID||"").trim();
 const LUCKYJET_WS_URL=String(process.env.LUCKYJET_WS_URL||"wss://crash-gateway-grm-cr.gamedev-tech.cc/websocket/lifecycle").trim();
+const LUCKYJET_CENTRIFUGO_WS_URL=String(process.env.LUCKYJET_CENTRIFUGO_WS_URL||"").trim();
 const ROOT=__dirname;
 const DATA_FILE=path.join(ROOT,".luckyjet-users.json");const SETTINGS_FILE=path.join(ROOT,".luckyjet-settings.json");const settings=(()=>{try{return JSON.parse(fs.readFileSync(SETTINGS_FILE,"utf8"))||{paused:false}}catch{return {paused:false}}})();function saveSettings(){try{fs.writeFileSync(SETTINGS_FILE,JSON.stringify(settings,null,2))}catch(e){console.error("settings_store_error",e.message)}}
 const users=(()=>{try{return JSON.parse(fs.readFileSync(DATA_FILE,"utf8"))||{}}catch{return {}}})();
