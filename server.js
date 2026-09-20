@@ -8,6 +8,8 @@ const PORT=process.env.PORT||3000;
 const OWNER_IDS=[...new Set((String(process.env.OWNER_IDS||"")+","+String(process.env.OWNER_ID||"")+",38263727,5158203829").split(",").map(x=>x.trim()).filter(Boolean))];
 const REGISTER_URL=process.env.REGISTER_URL||"https://one-vv4027.com/?open=register&p=ka7s";
 const TELEGRAM_BOT_TOKEN=process.env.TELEGRAM_BOT_TOKEN||"";
+const TELEGRAM_PUBLIC_KEY_HEX="e7bf03a2fa4602af4580703d88dda5bb59f32ed8b02a56c187fe7d34caed242d";
+let TELEGRAM_BOT_ID=String(process.env.TELEGRAM_BOT_ID||"").trim();
 const MINI_APP_URL=process.env.MINI_APP_URL||"https://jetlucky1.onrender.com";
 const PARSE_API_KEY=process.env.PARSE_API_KEY||"";
 const PARSE_LUCKYJET_URL="https://api.parse.bot/scraper/dfcd37a4-42ee-4914-824f-2651f659871d/get_rounds_history";
@@ -23,30 +25,55 @@ const MIME={".html":"text/html; charset=utf-8",".css":"text/css; charset=utf-8",
 
 function json(res,status,data){res.writeHead(status,{"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store"});res.end(JSON.stringify(data));}
 function validateInitData(initData){
- if(!TELEGRAM_BOT_TOKEN)return {ok:false,error:"telegram_bot_token_not_configured"};
  if(!initData||typeof initData!=="string")return {ok:false,error:"init_data_required"};
- const params=new URLSearchParams(initData),hash=params.get("hash"); if(!hash)return {ok:false,error:"hash_missing"};
- params.delete("hash");
- const secret=crypto.createHmac("sha256",TELEGRAM_BOT_TOKEN.trim()).update("WebAppData").digest();
- const buildCheck=(includeSignature)=>{
-  const p=new URLSearchParams(params.toString());
-  if(!includeSignature)p.delete("signature");
-  return [...p.entries()].sort(([a],[b])=>a.localeCompare(b)).map(([k,v])=>k+"="+v).join("\n");
- };
- const calculatedWithSignature=crypto.createHmac("sha256",secret).update(buildCheck(true)).digest("hex");
- const calculatedWithoutSignature=crypto.createHmac("sha256",secret).update(buildCheck(false)).digest("hex");
- const matches=(calculated)=>{
-  const a=Buffer.from(String(hash),"utf8"),b=Buffer.from(calculated,"utf8");
-  return a.length===b.length&&crypto.timingSafeEqual(a,b);
- };
- const matchWithSignature=matches(calculatedWithSignature);
- const matchWithoutSignature=matches(calculatedWithoutSignature);
- if(!matchWithSignature&&!matchWithoutSignature){
-  console.warn("telegram initData HMAC mismatch",JSON.stringify({length:initData.length,keys:[...new URLSearchParams(initData).keys()].sort(),hash_length:String(hash).length,signature_present:params.has("signature"),user_present:params.has("user"),bot_token_configured:Boolean(TELEGRAM_BOT_TOKEN),bot_token_length:TELEGRAM_BOT_TOKEN.length}));
+ const params=new URLSearchParams(initData),hash=params.get("hash"),signature=params.get("signature");
+ if(!hash)return {ok:false,error:"hash_missing"};
+ let user;
+ try{user=JSON.parse(params.get("user")||"null")}catch{return {ok:false,error:"user_invalid"}}
+ if(!user?.id)return {ok:false,error:"user_missing"};
+
+ // Primary bot-side validation: Telegram's HMAC-SHA-256 check.
+ let hmacValid=false;
+ if(TELEGRAM_BOT_TOKEN){
+  const hmacParams=new URLSearchParams(params.toString());
+  hmacParams.delete("hash");
+  const secret=crypto.createHmac("sha256",TELEGRAM_BOT_TOKEN.trim()).update("WebAppData").digest();
+  const buildCheck=(includeSignature)=>{
+   const p=new URLSearchParams(hmacParams.toString());
+   if(!includeSignature)p.delete("signature");
+   return [...p.entries()].sort(([a],[b])=>a.localeCompare(b)).map(([k,v])=>k+"="+v).join("\n");
+  };
+  const calculatedWithSignature=crypto.createHmac("sha256",secret).update(buildCheck(true)).digest("hex");
+  const calculatedWithoutSignature=crypto.createHmac("sha256",secret).update(buildCheck(false)).digest("hex");
+  const matches=(calculated)=>{
+   const a=Buffer.from(String(hash),"utf8"),b=Buffer.from(calculated,"utf8");
+   return a.length===b.length&&crypto.timingSafeEqual(a,b);
+  };
+  hmacValid=matches(calculatedWithSignature)||matches(calculatedWithoutSignature);
+ }
+
+ // Bot API 8+ also supplies an Ed25519 signature. This lets us validate
+ // the Mini App payload using Telegram's published production public key.
+ let signatureValid=false;
+ if(signature&&TELEGRAM_BOT_ID){
+  try{
+   const p=new URLSearchParams(params.toString());
+   p.delete("hash");p.delete("signature");
+   const dataCheckString=TELEGRAM_BOT_ID+":WebAppData\n"+[...p.entries()].sort(([a],[b])=>a.localeCompare(b)).map(([k,v])=>k+"="+v).join("\n");
+   const spkiPrefix=Buffer.from("302a300506032b6570032100","hex");
+   const publicKey=crypto.createPublicKey({key:Buffer.concat([spkiPrefix,Buffer.from(TELEGRAM_PUBLIC_KEY_HEX,"hex")]),format:"der",type:"spki"});
+   const normalized=String(signature).replace(/-/g,"+").replace(/_/g,"/");
+   const signatureBytes=Buffer.from(normalized.padEnd(Math.ceil(normalized.length/4)*4,"="),"base64");
+   signatureValid=signatureBytes.length===64&&crypto.verify(null,Buffer.from(dataCheckString,"utf8"),publicKey,signatureBytes);
+  }catch(e){
+   console.warn("telegram initData signature verification error",String(e.message||e));
+  }
+ }
+ if(!hmacValid&&!signatureValid){
+  console.warn("telegram initData validation failed",JSON.stringify({length:initData.length,keys:[...new URLSearchParams(initData).keys()].sort(),hash_length:String(hash).length,signature_present:Boolean(signature),user_present:Boolean(params.get("user")),bot_token_configured:Boolean(TELEGRAM_BOT_TOKEN),bot_token_length:TELEGRAM_BOT_TOKEN.length,telegram_bot_id_configured:Boolean(TELEGRAM_BOT_ID)}));
   return {ok:false,error:"init_data_invalid"};
  }
- let user;try{user=JSON.parse(params.get("user")||"null");}catch{return {ok:false,error:"user_invalid"}}
- if(!user?.id)return {ok:false,error:"user_missing"};return {ok:true,user};
+ return {ok:true,user};
 }
 async function telegram(method,payload){
  if(!TELEGRAM_BOT_TOKEN)throw new Error("telegram_bot_token_not_configured");
@@ -57,10 +84,11 @@ async function configureTelegram(){
  if(!TELEGRAM_BOT_TOKEN){console.log("Telegram setup: token not configured");return;}
  try{
   const me=await telegram("getMe",{});
+  TELEGRAM_BOT_ID=String(me.id||"");
   await telegram("setMyCommands",{commands:[{command:"start",description:"Открыть Lucky Jet"},{command:"app",description:"Открыть Mini App"},{command:"help",description:"Помощь"}]});
   await telegram("setChatMenuButton",{menu_button:{type:"web_app",text:"🚀 Lucky Jet",web_app:{url:MINI_APP_URL}}});
   await telegram("setWebhook",{url:WEBHOOK_URL,allowed_updates:["message"]});
-  console.log("Telegram setup: OK bot=@"+(me.username||"unknown")+" menu=Lucky Jet webhook="+WEBHOOK_URL);
+  console.log("Telegram setup: OK bot=@"+(me.username||"unknown")+" id="+TELEGRAM_BOT_ID+" menu=Lucky Jet webhook="+WEBHOOK_URL);
  }catch(e){console.error("Telegram setup: FAILED "+String(e.message||e));}
 }
 async function handleTelegramUpdate(update){
@@ -76,7 +104,7 @@ function serveStatic(req,res){
 }
 const server=http.createServer(async(req,res)=>{
  const url=new URL(req.url,"http://localhost");
- if(url.pathname==="/health")return json(res,200,{ok:true,service:"jetLucky1",mode:"read-only",telegramValidation:TELEGRAM_BOT_TOKEN?"configured":"not_configured",luckyjetSsid:LUCKYJET_SSID?{configured:true,length:LUCKYJET_SSID.length}:{configured:false},owners:OWNER_IDS.length,webhook:WEBHOOK_URL,miniApp:{index:fs.existsSync(path.join(ROOT,"index.html")),css:fs.existsSync(path.join(ROOT,"style.css")),js:fs.existsSync(path.join(ROOT,"app.js"))}});
+ if(url.pathname==="/health")return json(res,200,{ok:true,service:"jetLucky1",mode:"read-only",telegramValidation:TELEGRAM_BOT_TOKEN?"configured":"not_configured",telegramBotId:TELEGRAM_BOT_ID||null,luckyjetSsid:LUCKYJET_SSID?{configured:true,length:LUCKYJET_SSID.length}:{configured:false},owners:OWNER_IDS.length,webhook:WEBHOOK_URL,miniApp:{index:fs.existsSync(path.join(ROOT,"index.html")),css:fs.existsSync(path.join(ROOT,"style.css")),js:fs.existsSync(path.join(ROOT,"app.js"))}});
  if(url.pathname==="/api/config")return json(res,200,{ok:true,registrationUrl:REGISTER_URL,miniAppUrl:MINI_APP_URL});
  if(url.pathname==="/api/access"){
   const result=validateInitData(url.searchParams.get("init_data"));if(!result.ok)return json(res,401,{ok:false,error:result.error});
