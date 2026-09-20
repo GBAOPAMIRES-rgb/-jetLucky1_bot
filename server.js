@@ -409,47 +409,99 @@ async function probeLuckyJetHistoryAtStartup(){
   }
 }
 async function probeLuckyJetProtocolAtStartup(){
-  const token=String(process.env.LUCKYJET_CENTRIFUGO_TOKEN||process.env.LUCKYJET_MAIN_TOKEN||"").trim();
-  if(!token){console.log("Lucky Jet startup protocol probe",JSON.stringify({configured:false,error:"centrifugo_token_not_configured"}));return}
+  const configuredToken=String(process.env.LUCKYJET_CENTRIFUGO_TOKEN||process.env.LUCKYJET_MAIN_TOKEN||"").trim();
+  const configuredSsid=String(process.env.LUCKYJET_SSID||"").trim();
   const channel=String(process.env.LUCKYJET_CENTRIFUGO_CHANNEL||"lucky-jet-94").trim();
-  let tokenClaims=null;try{const p=token.split(".");if(p.length===3){const raw=p[1].replace(/-/g,"+").replace(/_/g,"/");const x=JSON.parse(Buffer.from(raw.padEnd(Math.ceil(raw.length/4)*4,"="),"base64").toString("utf8"));tokenClaims={alg:x.alg||null,typ:x.typ||null,sub:x.sub||null,aud:x.aud||null,iss:x.iss||null,iat:x.iat||null,exp:x.exp||null,channel:x.channel||null,channels:Array.isArray(x.channels)?x.channels.slice(0,10):null,subs:x.subs&&typeof x.subs==="object"?Object.keys(x.subs).slice(0,10):null}}}catch{}
-  const inferred=LUCKYJET_WS_URL.replace(/\/websocket\/lifecycle\/?$/,"/connection/websocket");
+
+  // Read-only credential diagnostics. Never log the credential itself.
+  const credentials=[];
+  const addCredential=(kind,value)=>{
+    if(value&&!credentials.some(x=>x.value===value))credentials.push({kind,value});
+  };
+  addCredential("configured_token",configuredToken);
+  addCredential("ssid",configuredSsid);
+
+  // Some SSID formats are JSON objects containing a session/access token.
+  if(configuredSsid){
+    try{
+      const obj=JSON.parse(configuredSsid);
+      for(const key of ["token","ssid","access_token","accessToken","session_token","sessionToken","authToken"]){
+        if(typeof obj?.[key]==="string")addCredential("ssid."+key,obj[key].trim());
+      }
+    }catch{}
+  }
+
+  if(!credentials.length){
+    console.log("Lucky Jet startup protocol probe",JSON.stringify({configured:false,error:"no_luckyjet_credentials"}));
+    return;
+  }
+
+  const inferred=LUCKYJET_WS_URL.replace(/\\/websocket\\/lifecycle\\/?$/,"/connection/websocket");
   const urls=[...new Set([LUCKYJET_CENTRIFUGO_WS_URL||null,LUCKYJET_WS_URL,inferred].filter(Boolean))];
   const origins=["","https://1wmljx.life"];
-  for(const url of urls){
-    for(const origin of origins){
-      try{
-        const result=await new Promise(resolve=>{
-          let settled=false,connected=false,subscribed=false,pubs=0,events=[],error=null,ws=null;
-          const finish=x=>{if(settled)return;settled=true;try{ws?.close()}catch{};resolve(x)};
-          const timer=setTimeout(()=>finish({opened:connected||subscribed,authenticated:connected,subscribed,pubs,events:[...new Set(events)].slice(0,20),error:error||"timeout",url,origin:origin||null}),10000);
-          try{ws=new WebSocket(url,{handshakeTimeout:7000,headers:origin?{Origin:origin}:{}})}catch(e){clearTimeout(timer);finish({opened:false,error:String(e.message||e),url,origin:origin||null});return}
-          ws.once("unexpected-response",(req,response)=>{
-            const h=response?.headers||{},body=[];
-            response?.on("data",d=>{if(body.join("").length<500)body.push(Buffer.isBuffer(d)?d.toString("utf8"):String(d))});
-            response?.on("end",()=>{clearTimeout(timer);finish({opened:false,authenticated:false,subscribed:false,pubs,events:[...new Set(events)].slice(0,20),error:{type:"http_handshake",status:response?.statusCode||null,server:h.server||null,body:body.join("").slice(0,500)||null},url,origin:origin||null})});
+
+  const summarizeCredential=(cred)=>{
+    let jwt=null;
+    try{
+      const p=cred.value.split(".");
+      if(p.length===3){
+        const raw=p[1].replace(/-/g,"+").replace(/_/g,"/");
+        const x=JSON.parse(Buffer.from(raw.padEnd(Math.ceil(raw.length/4)*4,"="),"base64").toString("utf8"));
+        jwt={sub:x.sub||null,aud:x.aud||null,iss:x.iss||null,iat:x.iat||null,exp:x.exp||null,channel:x.channel||null,channels:Array.isArray(x.channels)?x.channels.slice(0,10):null,subs:x.subs&&typeof x.subs==="object"?Object.keys(x.subs).slice(0,10):null};
+      }
+    }catch{}
+    return {kind:cred.kind,length:cred.value.length,looks_like_jwt:Boolean(jwt),jwt_claims_summary:jwt};
+  };
+
+  for(const cred of credentials){
+    for(const url of urls){
+      for(const origin of origins){
+        try{
+          const result=await new Promise(resolve=>{
+            let settled=false,connected=false,subscribed=false,pubs=0,events=[],error=null,ws=null;
+            const finish=x=>{if(settled)return;settled=true;try{ws?.close()}catch{};resolve(x)};
+            const timer=setTimeout(()=>finish({opened:connected||subscribed,authenticated:connected,subscribed,pubs,events:[...new Set(events)].slice(0,20),error:error||"timeout",url,origin:origin||null}),10000);
+            try{ws=new WebSocket(url,{handshakeTimeout:7000,headers:origin?{Origin:origin}:{}})}catch(e){clearTimeout(timer);finish({opened:false,error:String(e.message||e),url,origin:origin||null});return}
+            ws.once("unexpected-response",(req,response)=>{
+              const h=response?.headers||{},body=[];
+              response?.on("data",d=>{if(body.join("").length<500)body.push(Buffer.isBuffer(d)?d.toString("utf8"):String(d))});
+              response?.on("end",()=>{clearTimeout(timer);finish({opened:false,authenticated:false,subscribed:false,pubs,events:[...new Set(events)].slice(0,20),error:{type:"http_handshake",status:response?.statusCode||null,server:h.server||null,body:body.join("").slice(0,500)||null},url,origin:origin||null})});
+            });
+            ws.once("open",()=>{events.push("open");try{ws.send(JSON.stringify({id:1,connect:{token:cred.value,name:"jetLucky1"}}))}catch(e){error=String(e.message||e)}});
+            ws.on("message",raw=>{
+              const text=Buffer.isBuffer(raw)?raw.toString("utf8"):String(raw);
+              for(const line of text.split("\n")){
+                if(!line.trim())continue;
+                try{
+                  const m=JSON.parse(line);
+                  if(m.error){
+                    error={code:m.error.code??null,message:m.error.message||null};
+                    events.push("error");
+                    if(m.id===1){clearTimeout(timer);finish({opened:true,authenticated:false,subscribed:false,pubs,error,url,origin:origin||null})}
+                  }else if(m.connect){
+                    connected=true;events.push("connect");
+                    const subs=m.connect.subs||{};
+                    if(subs[channel]){subscribed=true;events.push("subscribed")}
+                    else{try{ws.send(JSON.stringify({id:2,subscribe:{channel}}))}catch(e){error=String(e.message||e)}}
+                  }else if(m.subscribe){subscribed=true;events.push("subscribed")}
+                  else if(m.pub){pubs++;events.push("pub")}
+                }catch{events.push("unparsed")}
+              }
+            });
+            ws.once("error",e=>{if(!settled){error=String(e.message||e);events.push("ws_error")}});
+            ws.once("close",(code,reason)=>{if(!settled){clearTimeout(timer);finish({opened:connected||subscribed,authenticated:connected,subscribed,pubs,events:[...new Set(events)].slice(0,20),error:error||{type:"closed",code,reason:Buffer.isBuffer(reason)?reason.toString("utf8"):String(reason||"")},url,origin:origin||null})}});
           });
-          ws.once("open",()=>{events.push("open");try{ws.send(JSON.stringify({id:1,connect:{token,name:"jetLucky1"}}))}catch(e){error=String(e.message||e)}});
-          ws.on("message",raw=>{
-            const text=Buffer.isBuffer(raw)?raw.toString("utf8"):String(raw);
-            for(const line of text.split("\n")){
-              if(!line.trim())continue;
-              try{
-                const m=JSON.parse(line);
-                if(m.error){error={code:m.error.code??null,message:m.error.message||null};events.push("error");if(m.id===1){clearTimeout(timer);finish({opened:true,authenticated:false,subscribed:false,pubs,error,url,origin:origin||null})}}
-                else if(m.connect){connected=true;events.push("connect");const subs=m.connect.subs||{};if(subs[channel]){subscribed=true;events.push("subscribed")}else{try{ws.send(JSON.stringify({id:2,subscribe:{channel}}))}catch(e){error=String(e.message||e)}}}
-                else if(m.subscribe){subscribed=true;events.push("subscribed")}
-                else if(m.pub){pubs++;events.push("pub")}
-              }catch{events.push("unparsed")}
-            }
-          });
-          ws.once("error",e=>{if(!settled){error=String(e.message||e);events.push("ws_error")}});
-          ws.once("close",(code,reason)=>{if(!settled){clearTimeout(timer);finish({opened:connected||subscribed,authenticated:connected,subscribed,pubs,events:[...new Set(events)].slice(0,20),error:error||{type:"closed",code,reason:Buffer.isBuffer(reason)?reason.toString("utf8"):String(reason||"")},url,origin:origin||null})}});
-        });
-        console.log("Lucky Jet startup protocol probe",JSON.stringify({...result,token_claims_summary:tokenClaims}));
-        if(result.authenticated)return;
-      }catch(e){console.log("Lucky Jet startup protocol probe",JSON.stringify({opened:false,error:String(e.message||e),url,origin:origin||null}))}
+          console.log("Lucky Jet startup protocol probe",JSON.stringify({...result,credential:summarizeCredential(cred)}));
+          if(result.authenticated){
+            console.log("Lucky Jet AUTH CONFIRMED",JSON.stringify({credential_kind:cred.kind,url,origin:origin||null,channel,publications:result.pubs||0}));
+            return;
+          }
+        }catch(e){
+          console.log("Lucky Jet startup protocol probe",JSON.stringify({opened:false,error:String(e.message||e),url,origin:origin||null,credential:summarizeCredential(cred)}));
+        }
+      }
     }
   }
+  console.log("Lucky Jet AUTH NOT CONFIRMED",JSON.stringify({credentials_tested:credentials.map(summarizeCredential),channel,urls,reason:"all read-only credential attempts were rejected or did not authenticate"}));
 }
 server.listen(PORT,()=>{console.log("jetLucky1 server listening on "+PORT+" owners="+OWNER_IDS.length);configureTelegram();probeLuckyJetGatewayAtStartup();probeLuckyJetHistoryAtStartup();probeLuckyJetProtocolAtStartup();});
