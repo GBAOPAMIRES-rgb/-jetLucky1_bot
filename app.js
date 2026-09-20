@@ -162,7 +162,17 @@ async function adminScreen(type){
   if(type==="diag"){
     const r=await api("/api/bot/status");
     setScreen("Диагностика",center("🩺 Диагностика","Безопасная проверка без секретов.",'<div class="data-stack">'+
-      '<div class="data-row"><span>Telegram WebApp</span><b>'+(tg?"OK":"НЕТ")+'</b></div><div class="data-row"><span>initData</span><b>'+(tg?.initData?"ПОЛУЧЕНА":"НЕТ")+'</b></div><div class="data-row"><span>Доступ</span><b>'+(hasAccess?"РАЗРЕШЁН":"ОГРАНИЧЕН")+'</b></div><div class="data-row"><span>Бот</span><b>'+(r.paused?"ПРИОСТАНОВЛЕН":"РАБОТАЕТ")+'</b></div></div>'));return;
+      '<div class="data-row"><span>Telegram WebApp</span><b>'+(tg?"OK":"НЕТ")+'</b></div><div class="data-row"><span>initData</span><b>'+(tg?.initData?"ПОЛУЧЕНА":"НЕТ")+'</b></div><div class="data-row"><span>Доступ</span><b>'+(hasAccess?"РАЗРЕШЁН":"ОГРАНИЧЕН")+'</b></div><div class="data-row"><span>Бот</span><b>'+(r.paused?"ПРИОСТАНОВЛЕН":"РАБОТАЕТ")+'</b></div></div><button class="primary-btn" id="checkLuckyJetSsid">🔎 Проверить Lucky Jet SSID</button><div id="luckyJetSsidMsg" class="signal-state"></div>'));
+    $("checkLuckyJetSsid").onclick=async()=>{
+      const b=$("checkLuckyJetSsid"),m=$("luckyJetSsidMsg");
+      b.disabled=true;m.textContent="Проверяем наличие SSID на сервере…";
+      const rr=await api("/api/luckyjet-ssid-test");
+      b.disabled=false;
+      if(rr.ok&&rr.configured)m.textContent="✅ Lucky Jet SSID настроен на Render. Длина: "+Number(rr.ssid_length||0)+". Значение скрыто.";
+      else if(rr.error==="luckyjet_ssid_not_configured")m.textContent="❌ LUCKYJET_SSID не настроен на Render.";
+      else m.textContent="❌ Проверка не пройдена: "+(rr.message||rr.error||"неизвестная ошибка");
+    };
+    return;
   }
   if(type==="logs"){setScreen("Логи",center("📋 Логи","Безопасный статус без секретов.",'<div class="admin-status">Источник: <b>Render</b><br><br>Секреты и токены в Mini App не показываются.</div>'));return}
 }
