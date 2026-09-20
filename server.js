@@ -486,7 +486,7 @@ async function probeLuckyJetClientBundleAtStartup(){
           hits.push({url,term:js.slice(idx,idx+120).replace(/[^\x20-\x7E]/g," ").slice(0,120),snippet:clean(js.slice(Math.max(0,idx-220),Math.min(js.length,idx+500)))});
         }
         console.log("Lucky Jet client asset probe",JSON.stringify({
-          url,http_status:rr.status,ok:rr.ok,bytes:js.length,linked_js_count:assetUrls.length,hits:hits.slice(-12)
+          url,http_status:rr.status,ok:rr.ok,bytes:js.length,linked_js_count:assetUrls.length,hits:hits.slice(-12),prefix:clean(js.slice(0,1800))
         }));
       }catch(e){
         console.log("Lucky Jet client asset probe",JSON.stringify({url,ok:false,error:String(e.message||e)}));
