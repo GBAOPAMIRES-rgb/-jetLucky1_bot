@@ -272,14 +272,7 @@ const server=http.createServer(async(req,res)=>{
         ws.once("error",e=>{events.push("ws_error");if(!settled&&!connectError){protocolError={code:null,message:String(e.message||e),type:"websocket_error"};}if(!opened)retry()});
         ws.once("close",(code,reason)=>{if(!settled&&!connected&&opened){events.push("closed_"+code);if(!protocolError)protocolError={code, message:Buffer.isBuffer(reason)?reason.toString("utf8"):String(reason||""),type:"websocket_close"};retry()}});
         };
-        try{openAttempt();}catch(e){events.push("socket_create_error");retry();return}
-        ws.once("open",()=>{opened=true;send({id:1,connect:{token,name:"jetLucky1"}})});
-        ws.on("message",raw=>{
-          const text=Buffer.isBuffer(raw)?raw.toString("utf8"):String(raw);
-          for(const line of text.split("\n")){if(!line.trim())continue;try{handle(JSON.parse(line))}catch{events.push("unparsed_frame")}}
-        });
-        ws.once("error",e=>{events.push("ws_error");if(!settled){protocolError={code:null,message:String(e.message||e),type:"websocket_error"};}retry()});
-        ws.once("close",(code,reason)=>{if(!settled&&!connected){events.push("closed_"+code);if(!protocolError)protocolError={code, message:Buffer.isBuffer(reason)?reason.toString("utf8"):String(reason||""),type:"websocket_close"};retry()}});
+        try{openAttempt();}catch(e){events.push("socket_create_error");protocolError={code:null,message:String(e.message||e),type:"socket_create_error"};retry();return}
       };
       timer=setTimeout(()=>finish({error:"centrifugo_auth_timeout",message:timeoutMessage()}),10000);
       attempt();
