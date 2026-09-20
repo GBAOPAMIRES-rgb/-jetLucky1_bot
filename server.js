@@ -461,7 +461,10 @@ async function probeLuckyJetClientBundleAtStartup(){
       "User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/152 Safari/537.36"
     }});
     const html=await page.text();
-    for(const m of html.matchAll(/(?:src|href)=["']([^"']+\.js(?:[?#][^"']*)?)["']/gi))addUrl(m[1]);
+    const pageScripts=[];
+    for(const m of html.matchAll(/(?:https?:\\/\\/[^"'\\s<>]+|\\/[^"'\\s<>]+)\\.js(?:[?#][^"'\\s<>]*)?/gi)){if(pageScripts.length<60)pageScripts.push(m[0]);addUrl(m[0]);}
+    for(const m of html.matchAll(/(?:src|href)=["']([^"']+)["']/gi)){if(pageScripts.length<60&&/\\.js(?:[?#]|$)/i.test(m[1]))pageScripts.push(m[1]);addUrl(m[1]);}
+    console.log("Lucky Jet page assets",JSON.stringify({http_status:page.status,bytes:html.length,scripts:[...new Set(pageScripts)].slice(0,60),has_lucky:/lucky/i.test(html),has_user_token:/user\\/token/i.test(html)}));
     addUrl("/lucky/536.3866f5e05722c4b2f9d0.bundle.js");
 
     const hits=[];
