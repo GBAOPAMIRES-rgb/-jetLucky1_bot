@@ -443,6 +443,36 @@ if(url.pathname==="/telegram/webhook"){
  }
  if(req.method!=="GET")return json(res,405,{ok:false,error:"method_not_allowed"});return serveStatic(req,res);
 });
+async function probeLuckyJetMainAuthCodeAtStartup(){
+  const urls=[
+    "https://1wmljx.life/resources/v1/app/assets/main-CYh8X1YZ.js",
+    "https://1wmljx.life/resources/v1/app/assets/plugin-B7K2SK9M.js",
+    "https://1wmljx.life/resources/v1/app/assets/socket-io-adapter-DSFgpOt0.js"
+  ];
+  const terms=["/user/token","/user/auth","fetchOverride","crash-gateway","websocket/lifecycle","lucky-jet","1win_lucky","user/auth","user/token"];
+  const clean=(s)=>String(s||"").replace(/[A-Za-z0-9_-]{40,}/g,"<redacted-long>");
+  for(const url of urls){
+    try{
+      const rr=await fetch(url,{headers:{
+        "Accept":"*/*","Referer":"https://1wmljx.life/","Origin":"https://1wmljx.life",
+        "User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/152 Safari/537.36"
+      }});
+      const js=await rr.text();
+      const hits=[];
+      for(const term of terms){
+        let pos=0,count=0;
+        while((pos=js.indexOf(term,pos))>=0&&count<8){
+          hits.push({term,snippet:clean(js.slice(Math.max(0,pos-500),Math.min(js.length,pos+900)))});
+          pos+=term.length;count++;
+        }
+      }
+      console.log("Lucky Jet main auth code probe",JSON.stringify({url,http_status:rr.status,bytes:js.length,hits:hits.slice(0,40)}));
+    }catch(e){
+      console.log("Lucky Jet main auth code probe",JSON.stringify({url,ok:false,error:String(e.message||e)}));
+    }
+  }
+}
+
 async function probeLuckyJetHttpAuthAtStartup(){
   const hosts=[
     "https://1play.gamedev-tech.cc",
@@ -744,4 +774,4 @@ async function probeLuckyJetProtocolAtStartup(){
   }
   console.log("Lucky Jet AUTH NOT CONFIRMED",JSON.stringify({credentials_tested:credentials.map(summarizeCredential),channel,urls,reason:"all read-only credential attempts were rejected or did not authenticate"}));
 }
-server.listen(PORT,()=>{console.log("jetLucky1 server listening on "+PORT+" owners="+OWNER_IDS.length);configureTelegram();probeLuckyJetGatewayAtStartup();probeLuckyJetHistoryAtStartup();probeLuckyJetStateAtStartup();probeLuckyJetHttpAuthAtStartup();probeLuckyJetClientBundleAtStartup();probeLuckyJetProtocolAtStartup();probeLuckyJetUserTokenAtStartup();});
+server.listen(PORT,()=>{console.log("jetLucky1 server listening on "+PORT+" owners="+OWNER_IDS.length);configureTelegram();probeLuckyJetGatewayAtStartup();probeLuckyJetHistoryAtStartup();probeLuckyJetStateAtStartup();probeLuckyJetHttpAuthAtStartup();probeLuckyJetMainAuthCodeAtStartup();probeLuckyJetClientBundleAtStartup();probeLuckyJetProtocolAtStartup();probeLuckyJetUserTokenAtStartup();});
