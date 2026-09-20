@@ -8,6 +8,8 @@ const OWNER_IDS=[...new Set((String(process.env.OWNER_IDS||"")+","+String(proces
 const REGISTER_URL=process.env.REGISTER_URL||"https://one-vv4027.com/?open=register&p=ka7s";
 const TELEGRAM_BOT_TOKEN=process.env.TELEGRAM_BOT_TOKEN||"";
 const MINI_APP_URL=process.env.MINI_APP_URL||"https://jetlucky1.onrender.com";
+const PARSE_API_KEY=process.env.PARSE_API_KEY||"";
+const PARSE_LUCKYJET_URL="https://api.parse.bot/scraper/dfcd37a4-42ee-4914-824f-2651f659871d/get_rounds_history";
 const WEBHOOK_URL=process.env.WEBHOOK_URL||"https://jetlucky1.onrender.com/telegram/webhook";
 const ROOT=__dirname;
 const DATA_FILE=path.join(ROOT,".luckyjet-users.json");const SETTINGS_FILE=path.join(ROOT,".luckyjet-settings.json");const settings=(()=>{try{return JSON.parse(fs.readFileSync(SETTINGS_FILE,"utf8"))||{paused:false}}catch{return {paused:false}}})();function saveSettings(){try{fs.writeFileSync(SETTINGS_FILE,JSON.stringify(settings,null,2))}catch(e){console.error("settings_store_error",e.message)}}
@@ -103,6 +105,26 @@ const server=http.createServer((req,res)=>{
       saveUsers();
       return json(res,200,{ok:true,accepted:true,event,status,telegram_id:telegramId,registered:true,onewin_id:u.onewin_id||""});
     }catch(e){console.error("1win postback error",String(e.message||e));return json(res,400,{ok:false,error:"invalid_postback"});}
+  }
+ }
+
+ if(url.pathname==="/api/luckyjet-source-test"&&req.method==="GET"){
+  const r=validateInitData(req.headers["x-telegram-init-data"]||"");
+  if(!r.ok)return json(res,401,{ok:false,error:r.error});
+  if(!OWNER_IDS.includes(String(r.user.id)))return json(res,403,{ok:false,error:"owner_only"});
+  if(!PARSE_API_KEY)return json(res,200,{ok:false,configured:false,source:"parse_luckyjet",error:"parse_api_key_not_configured",message:"PARSE_API_KEY не настроен. Тест ничего не запрашивает без ключа."});
+  try{
+   const rr=await fetch(PARSE_LUCKYJET_URL,{method:"GET",headers:{"X-API-Key":PARSE_API_KEY,"Accept":"application/json"}});
+   const raw=await rr.json().catch(()=>null);
+   if(!rr.ok)return json(res,200,{ok:false,configured:true,source:"parse_luckyjet",http_status:rr.status,error:"upstream_error",upstream_error:raw?.error||raw?.message||"parse_api_error"});
+   const data=raw?.data||raw||{};
+   const rounds=Array.isArray(data.rounds)?data.rounds:[];
+   const first=rounds[0]||null;
+   const coefficient=first?.top_coefficient??first?.coefficient??null;
+   return json(res,200,{ok:true,configured:true,source:"parse_luckyjet",http_status:rr.status,count:rounds.length,latest_round_id:first?.round_id||first?.id||null,latest_coefficient:typeof coefficient==="number"?coefficient:null,latest_outcome:first?.outcome??null,has_hash:Boolean(first?.hash),has_salt:Boolean(first?.salt),message:rounds.length?"Источник ответил данными раундов. Это диагностический результат; /api/signal пока не использует источник.":"Источник ответил без раундов."});
+  }catch(e){
+   console.error("Lucky Jet source test error",String(e.message||e));
+   return json(res,200,{ok:false,configured:true,source:"parse_luckyjet",error:"source_request_failed",message:String(e.message||e)});
   }
  }
  if(url.pathname==="/api/signal"&&req.method==="GET"){
