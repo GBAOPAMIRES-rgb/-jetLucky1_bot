@@ -199,14 +199,28 @@ const server=http.createServer(async(req,res)=>{
   try{
     const result=await new Promise(resolve=>{
       let settled=false,opened=false,connected=false,subscribed=false,pubs=0,events=[],latestCoefficient=null,latestNextCoefficient=null,latestRoundId=null,latestHash=false,latestSeed=false,latestNonce=false,latestMultiplier=null,latestResult=null,activeUrl="";
+      let protocolError=null,connectError=null,subscribeError=null,connectSubs=[],tokenClaims=null;
       let index=0,ws=null,timer=null;
-      const finish=(extra={})=>{if(settled)return;settled=true;clearTimeout(timer);try{ws?.close()}catch{};resolve({ok:Boolean(connected||subscribed||pubs),connected:opened,authenticated:connected,subscribed,channel,protocol_ws_url:activeUrl,attempted_urls:protocolUrls,publications:pubs,event_types:[...new Set(events)].slice(0,30),latest_round_id:latestRoundId,latest_coefficient:latestCoefficient,latest_next_coefficient:latestNextCoefficient,latest_hash:latestHash,latest_seed:latestSeed,latest_nonce:latestNonce,latest_multiplier:latestMultiplier,latest_result:latestResult,latency_ms:Date.now()-started,...extra})};
-      const timeoutMessage=()=>connected?"Подключение и авторизация Centrifugo подтверждены.":"WebSocket открылся, но авторизация Centrifugo не подтверждена. Проверялся endpoint /connection/websocket.";
+      try{
+        const parts=token.split(".");
+        if(parts.length===3){
+          const raw=parts[1].replace(/-/g,"+").replace(/_/g,"/");
+          const payload=JSON.parse(Buffer.from(raw.padEnd(Math.ceil(raw.length/4)*4,"="),"base64").toString("utf8"));
+          tokenClaims={alg:payload.alg||null,typ:payload.typ||null,sub:payload.sub||null,aud:payload.aud||null,iss:payload.iss||null,iat:payload.iat||null,exp:payload.exp||null,channel:payload.channel||null,channels:Array.isArray(payload.channels)?payload.channels.slice(0,20):null,subs:payload.subs&&typeof payload.subs==="object"?Object.keys(payload.subs).slice(0,20):null};
+        }
+      }catch{}
+      const finish=(extra={})=>{if(settled)return;settled=true;clearTimeout(timer);try{ws?.close()}catch{};resolve({ok:Boolean(connected||subscribed||pubs),connected:opened,authenticated:connected,subscribed,channel,protocol_ws_url:activeUrl,attempted_urls:protocolUrls,publications:pubs,event_types:[...new Set(events)].slice(0,30),latest_round_id:latestRoundId,latest_coefficient:latestCoefficient,latest_next_coefficient:latestNextCoefficient,latest_hash:latestHash,latest_seed:latestSeed,latest_nonce:latestNonce,latest_multiplier:latestMultiplier,latest_result:latestResult,connect_sub_channels:connectSubs,protocol_error:protocolError,connect_error:connectError,subscribe_error:subscribeError,token_claims_summary:tokenClaims,latency_ms:Date.now()-started,...extra})};
+      const timeoutMessage=()=>connected?"Подключение и авторизация Centrifugo подтверждены.":"WebSocket открылся, но авторизация Centrifugo не подтверждена. Теперь диагностируется точный ответ Centrifugo.";
       const send=(obj)=>{try{ws?.send(JSON.stringify(obj))}catch{}};
       const handle=(msg)=>{
         if(!msg||typeof msg!=="object")return;
-        if(msg.error){events.push("protocol_error");return}
-        if(msg.connect){connected=true;events.push("connect");const subs=msg.connect.subs||{};if(subs[channel])subscribed=true;else send({id:2,subscribe:{channel}});return}
+        if(msg.error){
+          const e=msg.error||{}; protocolError={id:msg.id??null,code:e.code??null,message:e.message||null,temporary:Boolean(e.temporary)}; events.push("protocol_error_"+String(e.code??"unknown"));
+          if(msg.id===1)connectError=protocolError;
+          if(msg.id===2)subscribeError=protocolError;
+          return;
+        }
+        if(msg.connect){connected=true;events.push("connect");const subs=msg.connect.subs||{};connectSubs=Object.keys(subs);if(subs[channel])subscribed=true;else send({id:2,subscribe:{channel}});return}
         if(msg.subscribe){subscribed=true;events.push("subscribe");return}
         if(msg.pub){
           pubs++;events.push("pub");
