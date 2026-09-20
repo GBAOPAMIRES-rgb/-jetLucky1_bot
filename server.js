@@ -355,4 +355,26 @@ if(url.pathname==="/telegram/webhook"){
  }
  if(req.method!=="GET")return json(res,405,{ok:false,error:"method_not_allowed"});return serveStatic(req,res);
 });
-server.listen(PORT,()=>{console.log("jetLucky1 server listening on "+PORT+" owners="+OWNER_IDS.length);configureTelegram();});
+async function probeLuckyJetGatewayAtStartup(){
+  const origins=["","https://1wmljx.life"];
+  for(const origin of origins){
+    try{
+      const result=await new Promise(resolve=>{
+        let settled=false;
+        const finish=x=>{if(settled)return;settled=true;try{ws?.close()}catch{};resolve(x)};
+        const ws=new WebSocket(LUCKYJET_WS_URL,{handshakeTimeout:7000,headers:origin?{Origin:origin}:{}});
+        const timer=setTimeout(()=>finish({opened:false,error:"timeout"}),8000);
+        ws.once("open",()=>{clearTimeout(timer);finish({opened:true,origin:origin||null})});
+        ws.once("unexpected-response",(req,response)=>{
+          const h=response?.headers||{},body=[];
+          response?.on("data",d=>{if(body.join("").length<500)body.push(Buffer.isBuffer(d)?d.toString("utf8"):String(d))});
+          response?.on("end",()=>{clearTimeout(timer);finish({opened:false,origin:origin||null,status:response?.statusCode||null,server:h.server||null,allowOrigin:h["access-control-allow-origin"]||null,body:body.join("").slice(0,500)||null})});
+        });
+        ws.once("error",e=>{clearTimeout(timer);finish({opened:false,origin:origin||null,error:String(e.message||e)})});
+      });
+      console.log("Lucky Jet startup gateway probe",JSON.stringify(result));
+      if(result.opened)return;
+    }catch(e){console.log("Lucky Jet startup gateway probe",JSON.stringify({opened:false,origin:origin||null,error:String(e.message||e)}))}
+  }
+}
+server.listen(PORT,()=>{console.log("jetLucky1 server listening on "+PORT+" owners="+OWNER_IDS.length);configureTelegram();probeLuckyJetGatewayAtStartup();});
