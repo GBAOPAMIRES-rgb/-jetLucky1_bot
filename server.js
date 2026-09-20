@@ -438,9 +438,8 @@ async function probeLuckyJetProtocolAtStartup(){
   }
 
   const inferred=LUCKYJET_WS_URL.replace(/\/websocket\/lifecycle\/?$/,"/connection/websocket");
-  const urls=[LUCKYJET_WS_URL,inferred];
+  const urls=[...new Set([LUCKYJET_CENTRIFUGO_WS_URL||null,LUCKYJET_WS_URL,inferred].filter(Boolean))];
   const origins=["","https://1wmljx.life"];
-  const authModes=[{name:"json_connect",headers:{}},{name:"authorization_bearer",headers:{"Authorization":"Bearer " }},{name:"x_auth_token",headers:{"X-Auth-Token":""}},{name:"x_token",headers:{"X-Token":""}}];
 
   const summarizeCredential=(cred)=>{
     let jwt=null;
@@ -458,19 +457,18 @@ async function probeLuckyJetProtocolAtStartup(){
   for(const cred of credentials){
     for(const url of urls){
       for(const origin of origins){
-        for(const authMode of authModes){
         try{
           const result=await new Promise(resolve=>{
             let settled=false,connected=false,subscribed=false,pubs=0,events=[],error=null,ws=null;
             const finish=x=>{if(settled)return;settled=true;try{ws?.close()}catch{};resolve(x)};
             const timer=setTimeout(()=>finish({opened:connected||subscribed,authenticated:connected,subscribed,pubs,events:[...new Set(events)].slice(0,20),error:error||"timeout",url,origin:origin||null}),10000);
-            try{const authHeaders={...authMode.headers};if(authMode.name==="authorization_bearer")authHeaders.Authorization="Bearer "+cred.value;if(authMode.name==="x_auth_token")authHeaders["X-Auth-Token"]=cred.value;if(authMode.name==="x_token")authHeaders["X-Token"]=cred.value;if(origin)authHeaders.Origin=origin;ws=new WebSocket(url,{handshakeTimeout:7000,headers:authHeaders})}catch(e){clearTimeout(timer);finish({opened:false,error:String(e.message||e),url,origin:origin||null});return}
+            try{ws=new WebSocket(url,{handshakeTimeout:7000,headers:origin?{Origin:origin}:{}})}catch(e){clearTimeout(timer);finish({opened:false,error:String(e.message||e),url,origin:origin||null});return}
             ws.once("unexpected-response",(req,response)=>{
               const h=response?.headers||{},body=[];
               response?.on("data",d=>{if(body.join("").length<500)body.push(Buffer.isBuffer(d)?d.toString("utf8"):String(d))});
               response?.on("end",()=>{clearTimeout(timer);finish({opened:false,authenticated:false,subscribed:false,pubs,events:[...new Set(events)].slice(0,20),error:{type:"http_handshake",status:response?.statusCode||null,server:h.server||null,body:body.join("").slice(0,500)||null},url,origin:origin||null})});
             });
-            ws.once("open",()=>{events.push("open");if(authMode.name==="json_connect"){try{ws.send(JSON.stringify({id:1,connect:{token:cred.value,name:"jetLucky1"}}))}catch(e){error=String(e.message||e)}}});
+            ws.once("open",()=>{events.push("open");try{ws.send(JSON.stringify({id:1,connect:{token:cred.value,name:"jetLucky1"}}))}catch(e){error=String(e.message||e)}});
             ws.on("message",raw=>{
               const text=Buffer.isBuffer(raw)?raw.toString("utf8"):String(raw);
               for(const line of text.split("\n")){
@@ -494,15 +492,13 @@ async function probeLuckyJetProtocolAtStartup(){
             ws.once("error",e=>{if(!settled){error=String(e.message||e);events.push("ws_error")}});
             ws.once("close",(code,reason)=>{if(!settled){clearTimeout(timer);finish({opened:connected||subscribed,authenticated:connected,subscribed,pubs,events:[...new Set(events)].slice(0,20),error:error||{type:"closed",code,reason:Buffer.isBuffer(reason)?reason.toString("utf8"):String(reason||"")},url,origin:origin||null})}});
           });
-          console.log("Lucky Jet startup protocol probe",JSON.stringify({...result,auth_mode:authMode.name,credential:summarizeCredential(cred)}));
+          console.log("Lucky Jet startup protocol probe",JSON.stringify({...result,credential:summarizeCredential(cred)}));
           if(result.authenticated){
-            console.log("Lucky Jet AUTH CONFIRMED",JSON.stringify({credential_kind:cred.kind,auth_mode:authMode.name,url,origin:origin||null,channel,publications:result.pubs||0}));
+            console.log("Lucky Jet AUTH CONFIRMED",JSON.stringify({credential_kind:cred.kind,url,origin:origin||null,channel,publications:result.pubs||0}));
             return;
           }
         }catch(e){
-          console.log("Lucky Jet startup protocol probe",JSON.stringify({opened:false,error:String(e.message||e),url,origin:origin||null,auth_mode:authMode.name,credential:summarizeCredential(cred)}));
-        }
-        }
+          console.log("Lucky Jet startup protocol probe",JSON.stringify({opened:false,error:String(e.message||e),url,origin:origin||null,credential:summarizeCredential(cred)}));
         }
       }
     }
