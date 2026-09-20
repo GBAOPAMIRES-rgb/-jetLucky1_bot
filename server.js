@@ -475,7 +475,7 @@ async function probeLuckyJetClientBundleAtStartup(){
     addUrl("/lucky/536.3866f5e05722c4b2f9d0.bundle.js");
 
     const hits=[];
-    const interesting=/(user\/token|user\/auth|websocket|centrifugo|ssid|access.?token|authorization|session.?id|subscribe|changeCoefficient|startGame|crash-gateway)/i;
+    const interesting=/(user\/token|user\/auth|getUserToken|registerUser|access.?token|authorization|session.?id|websocket|centrifugo|crash-gateway|1win_lucky|lucky-jet|changeCoefficient|startGame)/i;
     while(queue.length&&seen.size<20){
       const url=queue.shift(); if(seen.has(url))continue; seen.add(url);
       try{
