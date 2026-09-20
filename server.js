@@ -39,7 +39,7 @@ function validateInitData(initData){
   const a=Buffer.from(String(hash),"utf8"),b=Buffer.from(calculated,"utf8");
   return a.length===b.length&&crypto.timingSafeEqual(a,b);
  };
- if(!matches(calculatedWithSignature)&&!matches(calculatedWithoutSignature))return {ok:false,error:"init_data_invalid"};
+ const matchWithSignature=matches(calculatedWithSignature);\n const matchWithoutSignature=matches(calculatedWithoutSignature);\n if(!matchWithSignature&&!matchWithoutSignature){\n  console.warn("telegram initData HMAC mismatch",JSON.stringify({length:initData.length,keys:[...new URLSearchParams(initData).keys()].sort(),hash_length:String(hash).length,signature_present:params.has("signature"),user_present:params.has("user"),bot_token_configured:Boolean(TELEGRAM_BOT_TOKEN),bot_token_length:TELEGRAM_BOT_TOKEN.length}));\n  return {ok:false,error:"init_data_invalid"};\n }
  let user;try{user=JSON.parse(params.get("user")||"null");}catch{return {ok:false,error:"user_invalid"}}
  if(!user?.id)return {ok:false,error:"user_missing"};return {ok:true,user};
 }
