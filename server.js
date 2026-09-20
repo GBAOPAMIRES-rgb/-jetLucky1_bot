@@ -194,13 +194,15 @@ const server=http.createServer(async(req,res)=>{
   const channel=String(process.env.LUCKYJET_CENTRIFUGO_CHANNEL||"lucky-jet-94").trim();
   if(!token)return json(res,200,{ok:false,configured:false,error:"centrifugo_token_not_configured",message:"Токен Centrifugo не настроен на Render. Значение токена не запрашивается через Mini App."});
   const started=Date.now();
+  const inferredCentrifugoUrl=LUCKYJET_WS_URL.replace(/\/websocket\/lifecycle\/?$/,"/connection/websocket");
+  const protocolUrls=[...new Set([LUCKYJET_CENTRIFUGO_WS_URL,inferredCentrifugoUrl].filter(Boolean))];
   try{
     const result=await new Promise(resolve=>{
-      let settled=false,opened=false,connected=false,subscribed=false,pubs=0,events=[],latestCoefficient=null,latestNextCoefficient=null,latestRoundId=null,latestHash=false,latestSeed=false,latestNonce=false,latestMultiplier=null,latestResult=null;
-      const ws=new WebSocket(LUCKYJET_WS_URL,{handshakeTimeout:7000});
-      const finish=(extra={})=>{if(settled)return;settled=true;try{ws.close()}catch{};resolve({ok:Boolean(connected||subscribed||pubs),connected:opened,authenticated:connected,subscribed,channel,publications:pubs,event_types:[...new Set(events)].slice(0,30),latest_round_id:latestRoundId,latest_coefficient:latestCoefficient,latest_next_coefficient:latestNextCoefficient,latest_hash:latestHash,latest_seed:latestSeed,latest_nonce:latestNonce,latest_multiplier:latestMultiplier,latest_result:latestResult,latency_ms:Date.now()-started,...extra})};
-      const timer=setTimeout(()=>finish({message:connected?"Подключение и авторизация Centrifugo подтверждены.":"WebSocket открылся, но авторизация Centrifugo не подтверждена за отведённое время."}),10000);
-      const send=(obj)=>{try{ws.send(JSON.stringify(obj))}catch{}};
+      let settled=false,opened=false,connected=false,subscribed=false,pubs=0,events=[],latestCoefficient=null,latestNextCoefficient=null,latestRoundId=null,latestHash=false,latestSeed=false,latestNonce=false,latestMultiplier=null,latestResult=null,activeUrl="";
+      let index=0,ws=null,timer=null;
+      const finish=(extra={})=>{if(settled)return;settled=true;clearTimeout(timer);try{ws?.close()}catch{};resolve({ok:Boolean(connected||subscribed||pubs),connected:opened,authenticated:connected,subscribed,channel,protocol_ws_url:activeUrl,attempted_urls:protocolUrls,publications:pubs,event_types:[...new Set(events)].slice(0,30),latest_round_id:latestRoundId,latest_coefficient:latestCoefficient,latest_next_coefficient:latestNextCoefficient,latest_hash:latestHash,latest_seed:latestSeed,latest_nonce:latestNonce,latest_multiplier:latestMultiplier,latest_result:latestResult,latency_ms:Date.now()-started,...extra})};
+      const timeoutMessage=()=>connected?"Подключение и авторизация Centrifugo подтверждены.":"WebSocket открылся, но авторизация Centrifugo не подтверждена. Проверялся endpoint /connection/websocket.";
+      const send=(obj)=>{try{ws?.send(JSON.stringify(obj))}catch{}};
       const handle=(msg)=>{
         if(!msg||typeof msg!=="object")return;
         if(msg.error){events.push("protocol_error");return}
@@ -224,16 +226,24 @@ const server=http.createServer(async(req,res)=>{
           if(d.result!==undefined)latestResult=d.result;
           if(d.crash!==undefined)latestResult=d.crash;
           if(d.eventType&&/crash|result|end/i.test(String(d.eventType)))latestResult=d.result??d.crash??d.coefficient??null;
-          if(latestCoefficient!==null||latestRoundId||latestHash){} 
         }
       };
-      ws.once("open",()=>{opened=true;send({id:1,connect:{token,name:"jetLucky1"}})});
-      ws.on("message",raw=>{
-        const text=Buffer.isBuffer(raw)?raw.toString("utf8"):String(raw);
-        for(const line of text.split("\n")){if(!line.trim())continue;try{handle(JSON.parse(line))}catch{events.push("unparsed_frame")}}
-      });
-      ws.once("error",e=>{clearTimeout(timer);finish({error:"centrifugo_connection_failed",message:String(e.message||e)})});
-      ws.once("close",(code)=>{if(!settled){clearTimeout(timer);finish({error:connected?"centrifugo_closed":"gateway_closed",close_code:code,message:connected?"Соединение закрыто после авторизации.":"Соединение закрыто до подтверждения авторизации."})}});
+      const attempt=()=>{
+        if(settled)return;
+        if(index>=protocolUrls.length){finish({error:"centrifugo_auth_not_confirmed",message:timeoutMessage()});return}
+        activeUrl=protocolUrls[index++];
+        opened=false;connected=false;subscribed=false;
+        try{ws=new WebSocket(activeUrl,{handshakeTimeout:7000});}catch(e){events.push("socket_create_error");attempt();return}
+        ws.once("open",()=>{opened=true;send({id:1,connect:{token,name:"jetLucky1"}})});
+        ws.on("message",raw=>{
+          const text=Buffer.isBuffer(raw)?raw.toString("utf8"):String(raw);
+          for(const line of text.split("\n")){if(!line.trim())continue;try{handle(JSON.parse(line))}catch{events.push("unparsed_frame")}}
+        });
+        ws.once("error",e=>{events.push("ws_error");try{ws.close()}catch{};attempt()});
+        ws.once("close",(code)=>{if(!settled&&!connected){events.push("closed_"+code);attempt()}});
+      };
+      timer=setTimeout(()=>finish({error:"centrifugo_auth_timeout",message:timeoutMessage()}),10000);
+      attempt();
     });
     return json(res,200,result);
   }catch(e){return json(res,200,{ok:false,error:"centrifugo_test_failed",message:String(e.message||e)})}
