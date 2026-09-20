@@ -377,4 +377,47 @@ async function probeLuckyJetGatewayAtStartup(){
     }catch(e){console.log("Lucky Jet startup gateway probe",JSON.stringify({opened:false,origin:origin||null,error:String(e.message||e)}))}
   }
 }
-server.listen(PORT,()=>{console.log("jetLucky1 server listening on "+PORT+" owners="+OWNER_IDS.length);configureTelegram();probeLuckyJetGatewayAtStartup();});
+async function probeLuckyJetProtocolAtStartup(){
+  const token=String(process.env.LUCKYJET_CENTRIFUGO_TOKEN||process.env.LUCKYJET_MAIN_TOKEN||"").trim();
+  if(!token){console.log("Lucky Jet startup protocol probe",JSON.stringify({configured:false,error:"centrifugo_token_not_configured"}));return}
+  const channel=String(process.env.LUCKYJET_CENTRIFUGO_CHANNEL||"lucky-jet-94").trim();
+  const inferred=LUCKYJET_WS_URL.replace(/\/websocket\/lifecycle\/?$/,"/connection/websocket");
+  const urls=[...new Set([LUCKYJET_CENTRIFUGO_WS_URL||null,inferred].filter(Boolean))];
+  const origins=["","https://1wmljx.life"];
+  for(const url of urls){
+    for(const origin of origins){
+      try{
+        const result=await new Promise(resolve=>{
+          let settled=false,connected=false,subscribed=false,pubs=0,events=[],error=null,ws=null;
+          const finish=x=>{if(settled)return;settled=true;try{ws?.close()}catch{};resolve(x)};
+          const timer=setTimeout(()=>finish({opened:connected||subscribed,authenticated:connected,subscribed,pubs,events:[...new Set(events)].slice(0,20),error:error||"timeout",url,origin:origin||null}),10000);
+          try{ws=new WebSocket(url,{handshakeTimeout:7000,headers:origin?{Origin:origin}:{}})}catch(e){clearTimeout(timer);finish({opened:false,error:String(e.message||e),url,origin:origin||null});return}
+          ws.once("unexpected-response",(req,response)=>{
+            const h=response?.headers||{},body=[];
+            response?.on("data",d=>{if(body.join("").length<500)body.push(Buffer.isBuffer(d)?d.toString("utf8"):String(d))});
+            response?.on("end",()=>{clearTimeout(timer);finish({opened:false,authenticated:false,subscribed:false,pubs,events:[...new Set(events)].slice(0,20),error:{type:"http_handshake",status:response?.statusCode||null,server:h.server||null,body:body.join("").slice(0,500)||null},url,origin:origin||null})});
+          });
+          ws.once("open",()=>{events.push("open");try{ws.send(JSON.stringify({id:1,connect:{token,name:"jetLucky1"}}))}catch(e){error=String(e.message||e)}});
+          ws.on("message",raw=>{
+            const text=Buffer.isBuffer(raw)?raw.toString("utf8"):String(raw);
+            for(const line of text.split("\n")){
+              if(!line.trim())continue;
+              try{
+                const m=JSON.parse(line);
+                if(m.error){error={code:m.error.code??null,message:m.error.message||null};events.push("error");if(m.id===1){clearTimeout(timer);finish({opened:true,authenticated:false,subscribed:false,pubs,error,url,origin:origin||null})}}
+                else if(m.connect){connected=true;events.push("connect");const subs=m.connect.subs||{};if(subs[channel]){subscribed=true;events.push("subscribed")}else{try{ws.send(JSON.stringify({id:2,subscribe:{channel}}))}catch(e){error=String(e.message||e)}}}
+                else if(m.subscribe){subscribed=true;events.push("subscribed")}
+                else if(m.pub){pubs++;events.push("pub")}
+              }catch{events.push("unparsed")}
+            }
+          });
+          ws.once("error",e=>{if(!settled){error=String(e.message||e);events.push("ws_error")}});
+          ws.once("close",(code,reason)=>{if(!settled){clearTimeout(timer);finish({opened:connected||subscribed,authenticated:connected,subscribed,pubs,events:[...new Set(events)].slice(0,20),error:error||{type:"closed",code,reason:Buffer.isBuffer(reason)?reason.toString("utf8"):String(reason||"")},url,origin:origin||null})}});
+        });
+        console.log("Lucky Jet startup protocol probe",JSON.stringify(result));
+        if(result.authenticated)return;
+      }catch(e){console.log("Lucky Jet startup protocol probe",JSON.stringify({opened:false,error:String(e.message||e),url,origin:origin||null}))}
+    }
+  }
+}
+server.listen(PORT,()=>{console.log("jetLucky1 server listening on "+PORT+" owners="+OWNER_IDS.length);configureTelegram();probeLuckyJetGatewayAtStartup();probeLuckyJetProtocolAtStartup();});
