@@ -84,6 +84,86 @@ async function telegram(method,payload){
  const r=await fetch("https://api.telegram.org/bot"+TELEGRAM_BOT_TOKEN+"/"+method,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(payload)});
  const d=await r.json();if(!d.ok)throw new Error(method+":"+String(d.description||"telegram_api_error"));return d.result;
 }
+async function probeLuckyJetUserTokenAtStartup(){
+  if(!LUCKYJET_SSID){
+    console.log("Lucky Jet user-token probe",JSON.stringify({configured:false,reason:"ssid_not_configured"}));
+    return;
+  }
+  const url="https://crash-gateway-grm-cr.gamedev-tech.cc/user/token";
+  const attempts=[
+    {name:"authorization_bearer",headers:{"Authorization":"Bearer "+LUCKYJET_SSID}},
+    {name:"x-ssid",headers:{"X-SSID":LUCKYJET_SSID}},
+    {name:"x-auth-token",headers:{"X-Auth-Token":LUCKYJET_SSID}},
+    {name:"x-token",headers:{"X-Token":LUCKYJET_SSID}}
+  ];
+  for(const a of attempts){
+    try{
+      const rr=await fetch(url,{method:"POST",headers:{"Accept":"application/json","Content-Type":"application/json",...a.headers},body:"{}"});
+      const raw=await rr.json().catch(()=>null);
+      const obj=raw&&typeof raw==="object"?raw:{};
+      const candidates=[
+        obj.token,obj.access_token,obj.accessToken,obj.user_token,obj.userToken,
+        obj.data?.token,obj.data?.access_token,obj.data?.accessToken,obj.data?.user_token,obj.data?.userToken
+      ].filter(x=>typeof x==="string"&&x.trim());
+      const issued=candidates[0]||"";
+      const safeKeys=Object.keys(obj).slice(0,30);
+      console.log("Lucky Jet user-token probe",JSON.stringify({
+        method:a.name,http_status:rr.status,ok:rr.ok,
+        response_keys:safeKeys,credential_issued:Boolean(issued),
+        credential_length:issued.length||null,
+        credential_looks_like_jwt:/^[^.]+\\.[^.]+\\.[^.]+$/.test(issued)
+      }));
+      if(issued){
+        const lifecycle=await probeLuckyJetLifecycleCredential(issued);
+        console.log("Lucky Jet SSID auth result",JSON.stringify({
+          source:"user_token",
+          method:a.name,
+          authenticated:Boolean(lifecycle?.authenticated),
+          subscribed:Boolean(lifecycle?.subscribed),
+          publications:Number(lifecycle?.publications||0),
+          event_types:Array.isArray(lifecycle?.event_types)?lifecycle.event_types.slice(0,20):[],
+          error:lifecycle?.error||null
+        }));
+        if(lifecycle?.authenticated||lifecycle?.subscribed||Number(lifecycle?.publications||0)>0)return;
+      }
+    }catch(e){
+      console.log("Lucky Jet user-token probe",JSON.stringify({method:a.name,ok:false,error:String(e.message||e)}));
+    }
+  }
+}
+async function probeLuckyJetLifecycleCredential(credential){
+  const channel=String(process.env.LUCKYJET_CENTRIFUGO_CHANNEL||"lucky-jet-94").trim();
+  const urls=[LUCKYJET_WS_URL];
+  const result=await new Promise(resolve=>{
+    let ws=null,opened=false,authenticated=false,subscribed=false,pubs=0,events=[],error=null;
+    const timer=setTimeout(()=>finish(),8000);
+    const finish=()=>{clearTimeout(timer);try{ws?.close()}catch{};resolve({authenticated,subscribed,publications:pubs,event_types:[...new Set(events)].slice(0,20),error})};
+    try{
+      ws=new WebSocket(urls[0],{handshakeTimeout:7000});
+      ws.once("open",()=>{opened=true;try{ws.send(JSON.stringify({id:1,connect:{token:credential,name:"jetLucky1"}}))}catch(e){error={type:"send_error",message:String(e.message||e)}}});
+      ws.on("message",raw=>{
+        const s=Buffer.isBuffer(raw)?raw.toString("utf8"):String(raw);
+        for(const line of s.split("\\n")){
+          if(!line.trim())continue;
+          try{
+            const msg=JSON.parse(line);
+            if(msg.error){error={code:msg.error.code??null,message:msg.error.message||null};return}
+            if(msg.connect){
+              authenticated=true;events.push("connect");
+              const subs=msg.connect.subs||{};
+              if(subs[channel])subscribed=true;
+              else try{ws.send(JSON.stringify({id:2,subscribe:{channel}}))}catch{}
+            }else if(msg.subscribe){subscribed=true;events.push("subscribe")}
+            else if(msg.pub){pubs++;events.push("pub");if(msg.pub.data?.eventType)events.push(String(msg.pub.data.eventType))}
+          }catch{}
+        }
+      });
+      ws.once("error",e=>{if(!error)error={type:"websocket_error",message:String(e.message||e)}});
+      ws.once("close",(code,reason)=>{if(!authenticated&&!error)error={code,message:Buffer.isBuffer(reason)?reason.toString("utf8"):String(reason||"")};finish()});
+    }catch(e){error={type:"socket_create_error",message:String(e.message||e)};finish()}
+  });
+  return result;
+}
 async function configureTelegram(){
  if(!TELEGRAM_BOT_TOKEN){console.log("Telegram setup: token not configured");return;}
  try{
@@ -518,4 +598,4 @@ async function probeLuckyJetProtocolAtStartup(){
   }
   console.log("Lucky Jet AUTH NOT CONFIRMED",JSON.stringify({credentials_tested:credentials.map(summarizeCredential),channel,urls,reason:"all read-only credential attempts were rejected or did not authenticate"}));
 }
-server.listen(PORT,()=>{console.log("jetLucky1 server listening on "+PORT+" owners="+OWNER_IDS.length);configureTelegram();probeLuckyJetGatewayAtStartup();probeLuckyJetHistoryAtStartup();probeLuckyJetProtocolAtStartup();});
+server.listen(PORT,()=>{console.log("jetLucky1 server listening on "+PORT+" owners="+OWNER_IDS.length);configureTelegram();probeLuckyJetGatewayAtStartup();probeLuckyJetHistoryAtStartup();probeLuckyJetProtocolAtStartup();probeLuckyJetUserTokenAtStartup();});
