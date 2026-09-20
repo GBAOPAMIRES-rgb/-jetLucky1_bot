@@ -15,6 +15,12 @@ async function attempt(name, base, ssid){
     let settled=false,events=[],sampleEvents=[],socket;
     const finish=(result)=>{if(settled)return;settled=true;try{socket?.disconnect()}catch{};resolve({...result,mode:name,events:[...new Set(events)].slice(0,20),sample_events:sampleEvents.slice(0,8)})};
     const timer=setTimeout(()=>finish({connected:false,authenticated:false,reason:"timeout"}),10000);
+    const commonHeaders={
+      Origin:"https://1wmljx.life",
+      Referer:"https://1wmljx.life/",
+      ...(process.env.LUCKYJET_CUSTOMER_ID?{"customer-id":String(process.env.LUCKYJET_CUSTOMER_ID)}:{}),
+      ...(process.env.LUCKYJET_SESSION_ID?{"session-id":String(process.env.LUCKYJET_SESSION_ID)}:{})
+    };
     const opts={
       path:"/v4/socket.io",
       transports:["polling","websocket"],
@@ -22,6 +28,7 @@ async function attempt(name, base, ssid){
       reconnection:false,
       timeout:9000,
       withCredentials:true,
+      extraHeaders:commonHeaders,
       query:{Language:"en"}
     };
     if(name==="auth_token")opts.auth={token:ssid};
@@ -30,9 +37,9 @@ async function attempt(name, base, ssid){
     if(name==="query_token")opts.query.token=ssid;
     if(name==="query_ssid")opts.query.ssid=ssid;
     if(name==="query_access_token")opts.query.access_token=ssid;
-    if(name==="header_bearer")opts.extraHeaders={Authorization:"Bearer "+ssid,Origin:"https://1wmljx.life",Referer:"https://1wmljx.life/"};
-    if(name==="cookie_ssid")opts.extraHeaders={Cookie:"ssid="+ssid,Origin:"https://1wmljx.life",Referer:"https://1wmljx.life/"};
-    if(name==="cookie_SS_ID")opts.extraHeaders={Cookie:"SS_ID="+ssid,Origin:"https://1wmljx.life",Referer:"https://1wmljx.life/"};
+    if(name==="header_bearer")opts.extraHeaders={...commonHeaders,Authorization:"Bearer "+ssid};
+    if(name==="cookie_ssid")opts.extraHeaders={...commonHeaders,Cookie:"ssid="+ssid};
+    if(name==="cookie_SS_ID")opts.extraHeaders={...commonHeaders,Cookie:"SS_ID="+ssid};
     socket=io(base,opts);
     socket.on("connect",()=>{
       events.push("connect");
