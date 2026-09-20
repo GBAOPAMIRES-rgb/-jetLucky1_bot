@@ -381,6 +381,7 @@ async function probeLuckyJetProtocolAtStartup(){
   const token=String(process.env.LUCKYJET_CENTRIFUGO_TOKEN||process.env.LUCKYJET_MAIN_TOKEN||"").trim();
   if(!token){console.log("Lucky Jet startup protocol probe",JSON.stringify({configured:false,error:"centrifugo_token_not_configured"}));return}
   const channel=String(process.env.LUCKYJET_CENTRIFUGO_CHANNEL||"lucky-jet-94").trim();
+  let tokenClaims=null;try{const p=token.split(".");if(p.length===3){const raw=p[1].replace(/-/g,"+").replace(/_/g,"/");const x=JSON.parse(Buffer.from(raw.padEnd(Math.ceil(raw.length/4)*4,"="),"base64").toString("utf8"));tokenClaims={alg:x.alg||null,typ:x.typ||null,sub:x.sub||null,aud:x.aud||null,iss:x.iss||null,iat:x.iat||null,exp:x.exp||null,channel:x.channel||null,channels:Array.isArray(x.channels)?x.channels.slice(0,10):null,subs:x.subs&&typeof x.subs==="object"?Object.keys(x.subs).slice(0,10):null}}}catch{}
   const inferred=LUCKYJET_WS_URL.replace(/\/websocket\/lifecycle\/?$/,"/connection/websocket");
   const urls=[...new Set([LUCKYJET_CENTRIFUGO_WS_URL||null,LUCKYJET_WS_URL,inferred].filter(Boolean))];
   const origins=["","https://1wmljx.life"];
@@ -414,7 +415,7 @@ async function probeLuckyJetProtocolAtStartup(){
           ws.once("error",e=>{if(!settled){error=String(e.message||e);events.push("ws_error")}});
           ws.once("close",(code,reason)=>{if(!settled){clearTimeout(timer);finish({opened:connected||subscribed,authenticated:connected,subscribed,pubs,events:[...new Set(events)].slice(0,20),error:error||{type:"closed",code,reason:Buffer.isBuffer(reason)?reason.toString("utf8"):String(reason||"")},url,origin:origin||null})}});
         });
-        console.log("Lucky Jet startup protocol probe",JSON.stringify(result));
+        console.log("Lucky Jet startup protocol probe",JSON.stringify({...result,token_claims_summary:tokenClaims}));
         if(result.authenticated)return;
       }catch(e){console.log("Lucky Jet startup protocol probe",JSON.stringify({opened:false,error:String(e.message||e),url,origin:origin||null}))}
     }
