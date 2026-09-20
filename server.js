@@ -181,7 +181,12 @@ const server=http.createServer(async(req,res)=>{
           firstMessage=s.slice(0,2000);
         }
       });
-      ws.once("error",e=>{clearTimeout(timer);finish({ok:false,connected:false,url:LUCKYJET_WS_URL,latency_ms:Date.now()-started,messages,first_message:firstMessage,error:"gateway_connection_failed",message:String(e.message||e)})});
+      ws.once("unexpected-response",(req,response)=>{
+        const headers=response?.headers||{}, body=[];
+        response?.on("data",d=>{if(body.join("").length<500)body.push(Buffer.isBuffer(d)?d.toString("utf8"):String(d))});
+        response?.on("end",()=>{clearTimeout(timer);finish({ok:false,connected:false,url:LUCKYJET_WS_URL,latency_ms:Date.now()-started,messages,first_message:firstMessage,error:"invalid_server_response",status:response?.statusCode||null,server:headers.server||null,allowOrigin:headers["access-control-allow-origin"]||null,response_body:body.join("").slice(0,500)||null})});
+      });
+      ws.once("error",e=>{if(!settled){clearTimeout(timer);finish({ok:false,connected:false,url:LUCKYJET_WS_URL,latency_ms:Date.now()-started,messages,first_message:firstMessage,error:"gateway_connection_failed",message:String(e.message||e)})}});
       ws.once("close",(code)=>{if(!settled){clearTimeout(timer);finish({ok:false,connected:opened,url:LUCKYJET_WS_URL,close_code:code,messages,first_message:firstMessage,error:opened?"gateway_closed":"gateway_closed_before_open"})}});
     });
     return json(res,200,result);
