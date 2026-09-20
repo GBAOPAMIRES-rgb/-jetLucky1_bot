@@ -28,7 +28,8 @@ function clean(s){
 async function run(){
   const urls=[
     "https://1wmljx.life/resources/v1/app/assets/main-CYh8X1YZ.js",
-    "https://1wmljx.life/resources/v1/app/assets/socket-io-adapter-DSFgpOt0.js"
+    "https://1wmljx.life/resources/v1/app/assets/socket-io-adapter-DSFgpOt0.js",
+  "https://1wmljx.life/resources/v1/app/assets/use-game-session-pe2F7n11.js"
   ];
   const terms=[
     "socket-io-adapter-DSFgpOt0","new S(","new h(","customerId",
