@@ -382,7 +382,7 @@ async function probeLuckyJetProtocolAtStartup(){
   if(!token){console.log("Lucky Jet startup protocol probe",JSON.stringify({configured:false,error:"centrifugo_token_not_configured"}));return}
   const channel=String(process.env.LUCKYJET_CENTRIFUGO_CHANNEL||"lucky-jet-94").trim();
   const inferred=LUCKYJET_WS_URL.replace(/\/websocket\/lifecycle\/?$/,"/connection/websocket");
-  const urls=[...new Set([LUCKYJET_CENTRIFUGO_WS_URL||null,inferred].filter(Boolean))];
+  const urls=[...new Set([LUCKYJET_CENTRIFUGO_WS_URL||null,LUCKYJET_WS_URL,inferred].filter(Boolean))];
   const origins=["","https://1wmljx.life"];
   for(const url of urls){
     for(const origin of origins){
