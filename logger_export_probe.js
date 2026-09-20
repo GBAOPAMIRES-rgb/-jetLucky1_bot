@@ -8,27 +8,20 @@ async function run(){
   console.log("Lucky Jet logger export probe",JSON.stringify({status:r.status,bytes:r.body.length}));
   if(r.status!==200)return;
   const s=r.body;
-  const needles=["AR as al","al:AR","export{","function AR(","AR=async","AR=(()=>","AR=({","AR=Object","AR=()=>({","AR=()=>","AR=function","const AR=","let AR=","var AR="];
+  const needles=["AR as al","al:AR","function AR(","AR=async","AR=(()=>","AR=({","AR=Object","AR=()=>({","AR=()=>","AR=function","const AR=","let AR=","var AR=","document.cookie","localStorage","sessionStorage","Authorization","accessToken","customerId","traceId"];
   for(const n of needles){
    const ps=[];let p=0;
-   while((p=s.indexOf(n,p))>=0&&ps.length<8){ps.push({pos:p,snippet:red(s.slice(Math.max(0,p-900),Math.min(s.length,p+1500)))});p+=n.length;}
+   while((p=s.indexOf(n,p))>=0&&ps.length<6){ps.push({pos:p,snippet:red(s.slice(Math.max(0,p-700),Math.min(s.length,p+1800)))});p+=n.length;}
    console.log("Lucky Jet logger exact search",JSON.stringify({needle:n,count:ps.length,hits:ps}));
   }
-  const declPatterns=[/function\\s+AR\\s*\\(/g,/\\b(?:const|let|var)\\s+AR\\s*=/g,/\\bAR\\s*=\\s*(?:async\\s*)?\\(?[^=]{0,120}\\)?\\s*=>/g];\n  for(const re of declPatterns){const hits=[];let m;while((m=re.exec(s))&&hits.length<12){const p=m.index;hits.push({pos:p,snippet:red(s.slice(Math.max(0,p-500),Math.min(s.length,p+2200)))});}console.log("Lucky Jet logger AR declaration search",JSON.stringify({pattern:String(re),count:hits.length,hits}));}\n  const arAll=[]; let q=0; while((q=s.indexOf("AR",q))>=0&&arAll.length<40){arAll.push({pos:q,snippet:red(s.slice(Math.max(0,q-500),Math.min(s.length,q+900)))});q+=2;} console.log("Lucky Jet logger AR occurrences",JSON.stringify({count:arAll.length,hits:arAll}));
+  const declPatterns=[/function\s+AR\s*\(/g,/\b(?:const|let|var)\s+AR\s*=/g,/\bAR\s*=\s*(?:async\s*)?(?:\([^)]*\)|[A-Za-z_$][\w$]*)\s*=>/g];
+  for(const re of declPatterns){
+   const hits=[];let m;
+   while((m=re.exec(s))&&hits.length<10){const p=m.index;hits.push({pos:p,snippet:red(s.slice(Math.max(0,p-700),Math.min(s.length,p+3000)))});}
+   console.log("Lucky Jet logger AR declaration search",JSON.stringify({pattern:String(re),count:hits.length,hits}));
+  }
   const map=await get(BASE+".map");
   console.log("Lucky Jet logger sourcemap",JSON.stringify({status:map.status,bytes:map.body.length}));
-  if(map.status===200){
-   let j=null;try{j=JSON.parse(map.body)}catch{}
-   const sources=j?.sources||[], contents=j?.sourcesContent||[];
-   console.log("Lucky Jet logger sourcemap summary",JSON.stringify({sources:sources.slice(0,30),sources_count:sources.length,has_sources_content:contents.length>0}));
-   for(let i=0;i<contents.length;i++){
-    const c=String(contents[i]||"");
-    if(/\bAR\b/.test(c)||/function\s+AR\b/.test(c)){
-      const p=Math.max(0,c.search(/function\s+AR\b|\bAR\b/));
-      console.log("Lucky Jet logger sourcemap AR source",JSON.stringify({source:sources[i]||null,snippet:red(c.slice(Math.max(0,p-1200),p+3500))}));
-    }
-   }
-  }
  }catch(e){console.log("Lucky Jet logger export probe",JSON.stringify({ok:false,error:String(e.message||e)}));}
 }
 module.exports={run};
