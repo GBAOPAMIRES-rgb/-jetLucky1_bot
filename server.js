@@ -556,7 +556,7 @@ async function probeLuckyJetClientBundleAtStartup(){
   const addUrl=(u)=>{
     try{
       const x=new URL(u,pageUrl).href;
-      if(/^https:\/\/(?:1play\.gamedev-tech\.cc|1wmljx\.life)\//i.test(x)&&/\.js(?:[?#]|$)/i.test(x)&&!seen.has(x)&&queue.length<40)queue.push(x);
+      if(/^https:\/\/(?:1play\.gamedev-tech\.cc|1wmljx\.life)\//i.test(x)&&/\.js(?:[?#]|$)/i.test(x)&&!seen.has(x)&&queue.length<100)queue.push(x);
     }catch{}
   };
   try{
@@ -579,8 +579,8 @@ async function probeLuckyJetClientBundleAtStartup(){
     addUrl("/lucky/536.3866f5e05722c4b2f9d0.bundle.js");
 
     const hits=[];
-    const interesting=/(user\/token|user\/auth|getUserToken|registerUser|access.?token|authorization|session.?id|websocket|centrifugo|crash-gateway|1win_lucky|lucky-jet|changeCoefficient|startGame)/i;
-    while(queue.length&&seen.size<20){
+    const interesting=/(\/user\/token|\/user\/auth|getUserToken|registerUser|access.?token|authorization|session.?id|websocket|centrifugo|crash-gateway|1win_lucky|lucky-jet|changeCoefficient|startGame)/i;
+    while(queue.length&&seen.size<100){
       const url=queue.shift(); if(seen.has(url))continue; seen.add(url);
       try{
         const rr=await fetch(url,{headers:{
