@@ -452,7 +452,7 @@ async function probeLuckyJetClientBundleAtStartup(){
   const addUrl=(u)=>{
     try{
       const x=new URL(u,pageUrl).href;
-      if(/^https:\/\/1play\.gamedev-tech\.cc\//i.test(x)&&/\.js(?:[?#]|$)/i.test(x)&&!seen.has(x)&&queue.length<20)queue.push(x);
+      if(/^https:\/\/(?:1play\.gamedev-tech\.cc|1wmljx\.life)\//i.test(x)&&/\.js(?:[?#]|$)/i.test(x)&&!seen.has(x)&&queue.length<40)queue.push(x);
     }catch{}
   };
   try{
@@ -462,8 +462,10 @@ async function probeLuckyJetClientBundleAtStartup(){
     }});
     const html=await page.text();
     const pageScripts=[];
-    for(const token of html.split(/[\\s"'<>]+/)){if(token.includes(".js")){if(pageScripts.length<60)pageScripts.push(token);addUrl(token);}}
-    console.log("Lucky Jet page assets",JSON.stringify({http_status:page.status,bytes:html.length,scripts:[...new Set(pageScripts)].slice(0,60),has_lucky:html.toLowerCase().includes("lucky"),has_user_token:html.includes("/user/token"),script_tags:(html.match(/<script/gi)||[]).length,markers:{webpack:html.indexOf("webpack"),bundle536:html.indexOf("536.3866f5e05722c4b2f9d0.bundle.js"),js:html.indexOf(".js")},prefix:clean(html.slice(0,5000))}));
+    const resourceJs=new RegExp("/resources/[^\\\"'\\s<>]+\\\\.js(?:[?#][^\\\"'\\s<>]*)?","gi");
+    for(const m of html.matchAll(resourceJs)){if(pageScripts.length<80)pageScripts.push(m[0]);addUrl(m[0]);}
+    console.log("Lucky Jet page assets",JSON.stringify({http_status:page.status,bytes:html.length,scripts:[...new Set(pageScripts)].slice(0,80),has_lucky:html.toLowerCase().includes("lucky"),has_user_token:html.includes("/user/token"),script_tags:(html.match(/<script/gi)||[]).length,markers:{webpack:html.indexOf("webpack"),bundle536:html.indexOf("536.3866f5e05722c4b2f9d0.bundle.js"),js:html.indexOf(".js")}}));
+    addUrl("/lucky/536.3866f5e05722c4b2f9d0.bundle.js");
     addUrl("/lucky/536.3866f5e05722c4b2f9d0.bundle.js");
 
     const hits=[];
