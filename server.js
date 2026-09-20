@@ -802,6 +802,19 @@ async function probeLuckyJetProtocolAtStartup(){
   }
   console.log("Lucky Jet AUTH NOT CONFIRMED",JSON.stringify({credentials_tested:credentials.map(summarizeCredential),channel,urls,reason:"all read-only credential attempts were rejected or did not authenticate"}));
 }
+async function probeLuckyJetParseSourceAtStartup(){
+  if(!PARSE_API_KEY){console.log("Lucky Jet real source probe",JSON.stringify({configured:false,error:"parse_api_key_not_configured"}));return;}
+  try{
+    const rr=await fetch(PARSE_LUCKYJET_URL,{method:"GET",headers:{"X-API-Key":PARSE_API_KEY,"Accept":"application/json"}});
+    const raw=await rr.json().catch(()=>null);
+    if(!rr.ok){console.log("Lucky Jet real source probe",JSON.stringify({configured:true,ok:false,http_status:rr.status,error:raw?.error||raw?.message||"upstream_error"}));return;}
+    const data=raw?.data||raw||{};
+    const rounds=Array.isArray(data.rounds)?data.rounds:[];
+    const first=rounds[0]||null;
+    const coefficient=first?.top_coefficient??first?.topCoefficient??first?.coefficient??(Array.isArray(first?.finalValues)?first.finalValues[0]:null);
+    console.log("Lucky Jet real source probe",JSON.stringify({configured:true,ok:true,http_status:rr.status,count:rounds.length,latest_coefficient:typeof coefficient==="number"?coefficient:null,latest_round_id:first?.round_id||first?.id||null}));
+  }catch(e){console.log("Lucky Jet real source probe",JSON.stringify({configured:true,ok:false,error:String(e.message||e)}));}
+}
 function probeLuckyJetLoggerAuthHelperAtStartup(){
   const url="https://1wmljx.life/resources/v1/app/assets/logger-D8JkLHFH.js";
   https.get(url,{headers:{Accept:"*/*",Origin:"https://1wmljx.life",Referer:"https://1wmljx.life/", "User-Agent":"Mozilla/5.0"}},res=>{
