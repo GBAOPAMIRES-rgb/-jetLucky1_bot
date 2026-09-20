@@ -635,13 +635,13 @@ async function probeLuckyJetProtocolAtStartup(){
             ws.once("error",e=>{if(!settled){error=String(e.message||e);events.push("ws_error")}});
             ws.once("close",(code,reason)=>{if(!settled){clearTimeout(timer);finish({opened:connected||subscribed,authenticated:connected,subscribed,pubs,events:[...new Set(events)].slice(0,20),error:error||{type:"closed",code,reason:Buffer.isBuffer(reason)?reason.toString("utf8"):String(reason||"")},url,origin:origin||null})}});
           });
-          console.log("Lucky Jet startup protocol probe",JSON.stringify({...result,credential:summarizeCredential(cred),auth_mode:authMode}));
+          console.log("Lucky Jet startup protocol probe",JSON.stringify({...result,credential:summarizeCredential(cred),auth_mode:mode}));
           if(result.authenticated){
             console.log("Lucky Jet AUTH CONFIRMED",JSON.stringify({credential_kind:cred.kind,url,origin:origin||null,channel,publications:result.pubs||0}));
             return;
           }
           }catch(e){
-            console.log("Lucky Jet startup protocol probe",JSON.stringify({opened:false,error:String(e.message||e),url,origin:origin||null,credential:summarizeCredential(cred),auth_mode:authMode}));
+            console.log("Lucky Jet startup protocol probe",JSON.stringify({opened:false,error:String(e.message||e),url,origin:origin||null,credential:summarizeCredential(cred),auth_mode:mode}));
           }
         }
       }
