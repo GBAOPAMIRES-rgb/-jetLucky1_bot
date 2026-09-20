@@ -8,13 +8,13 @@ async function run(){
   console.log("Lucky Jet logger export probe",JSON.stringify({status:r.status,bytes:r.body.length}));
   if(r.status!==200)return;
   const s=r.body;
-  const needles=["AR as al","al:AR","export{","AR(","AR=async","AR=(()=>","AR=({","AR=Object","AR=\"","AR=null","AR=function"];
+  const needles=["AR as al","al:AR","export{","function AR(","AR=async","AR=(()=>","AR=({","AR=Object","AR=()=>({","AR=()=>","AR=function","const AR=","let AR=","var AR="];
   for(const n of needles){
    const ps=[];let p=0;
    while((p=s.indexOf(n,p))>=0&&ps.length<8){ps.push({pos:p,snippet:red(s.slice(Math.max(0,p-900),Math.min(s.length,p+1500)))});p+=n.length;}
    console.log("Lucky Jet logger exact search",JSON.stringify({needle:n,count:ps.length,hits:ps}));
   }
-  const arAll=[]; let q=0; while((q=s.indexOf("AR",q))>=0&&arAll.length<40){arAll.push({pos:q,snippet:red(s.slice(Math.max(0,q-500),Math.min(s.length,q+900)))});q+=2;} console.log("Lucky Jet logger AR occurrences",JSON.stringify({count:arAll.length,hits:arAll}));
+  const declPatterns=[/function\\s+AR\\s*\\(/g,/\\b(?:const|let|var)\\s+AR\\s*=/g,/\\bAR\\s*=\\s*(?:async\\s*)?\\(?[^=]{0,120}\\)?\\s*=>/g];\n  for(const re of declPatterns){const hits=[];let m;while((m=re.exec(s))&&hits.length<12){const p=m.index;hits.push({pos:p,snippet:red(s.slice(Math.max(0,p-500),Math.min(s.length,p+2200)))});}console.log("Lucky Jet logger AR declaration search",JSON.stringify({pattern:String(re),count:hits.length,hits}));}\n  const arAll=[]; let q=0; while((q=s.indexOf("AR",q))>=0&&arAll.length<40){arAll.push({pos:q,snippet:red(s.slice(Math.max(0,q-500),Math.min(s.length,q+900)))});q+=2;} console.log("Lucky Jet logger AR occurrences",JSON.stringify({count:arAll.length,hits:arAll}));
   const map=await get(BASE+".map");
   console.log("Lucky Jet logger sourcemap",JSON.stringify({status:map.status,bytes:map.body.length}));
   if(map.status===200){
