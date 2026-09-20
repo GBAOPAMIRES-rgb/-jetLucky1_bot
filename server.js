@@ -445,21 +445,29 @@ if(url.pathname==="/telegram/webhook"){
 });
 async function probeLuckyJetClientBundleAtStartup(){
   const pageUrl="https://1play.gamedev-tech.cc/casino";
+  const seen=new Set(),queue=[];
+  const clean=(s)=>String(s||"")
+    .replace(/[A-Za-z0-9_-]{40,}/g,"<redacted-long>")
+    .replace(/(Bearer\\s+)[^\\s"'<>]+/gi,"$1<redacted>");
+  const addUrl=(u)=>{
+    try{
+      const x=new URL(u,pageUrl).href;
+      if(/^https:\/\/1play\.gamedev-tech\.cc\//i.test(x)&&/\.js(?:[?#]|$)/i.test(x)&&!seen.has(x)&&queue.length<20)queue.push(x);
+    }catch{}
+  };
   try{
     const page=await fetch(pageUrl,{headers:{
       "Accept":"text/html,application/xhtml+xml",
       "User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/152 Safari/537.36"
     }});
     const html=await page.text();
-    const bundles=[...new Set([...html.matchAll(/(?:src|href)=[\"']([^\"']*\/lucky\/[^\\"']+\.js)[\"']/gi)].map(m=>m[1]).filter(Boolean))].slice(0,10);
-    const fallback="https://1play.gamedev-tech.cc/lucky/536.3866f5e05722c4b2f9d0.bundle.js";
-    const urls=[...new Set(bundles.map(x=>x.startsWith("http")?x:new URL(x,pageUrl).href).concat(fallback))];
-    const clean=(s)=>String(s||"")
-      .replace(/[A-Za-z0-9_-]{40,}/g,"<redacted-long>")
-      .replace(/(Bearer\\s+)[^\\s"'<>]+/gi,"$1<redacted>")
-      .replace(/(ssid|token|session|authorization)(\\s*[:=]\\s*)["'][^"']{20,}["']/gi,"$1$2\"<redacted>\"");
-    const targets=[new RegExp("user/token","i"),new RegExp("user/auth","i"),new RegExp("websocket/lifecycle","i"),new RegExp("websocket/secondary","i"),new RegExp("\\bssid\\b","i"),new RegExp("authorization","i"),new RegExp("centrifugo","i"),new RegExp("subscribe","i"),new RegExp("changeCoefficient","i")];
-    for(const url of urls){
+    for(const m of html.matchAll(/(?:src|href)=["']([^"']+\.js(?:[?#][^"']*)?)["']/gi))addUrl(m[1]);
+    addUrl("/lucky/536.3866f5e05722c4b2f9d0.bundle.js");
+
+    const hits=[];
+    const interesting=/(user\/token|user\/auth|websocket|centrifugo|ssid|access.?token|authorization|session.?id|subscribe|changeCoefficient|startGame|crash-gateway)/i;
+    while(queue.length&&seen.size<20){
+      const url=queue.shift(); if(seen.has(url))continue; seen.add(url);
       try{
         const rr=await fetch(url,{headers:{
           "Accept":"*/*",
@@ -468,26 +476,29 @@ async function probeLuckyJetClientBundleAtStartup(){
           "User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/152 Safari/537.36"
         }});
         const js=await rr.text();
-        const matches=[];
-        for(const re of targets){
-          let m;
-          while((m=re.exec(js))!==null && matches.length<40){
-            const start=Math.max(0,m.index-260),end=Math.min(js.length,m.index+700);
-            const snippet=clean(js.slice(start,end));
-            if(!matches.some(x=>x.term===re.source&&x.snippet===snippet))matches.push({term:re.source,snippet});
-          }
+        const assetUrls=[...js.matchAll(/(?:https?:\/\/[^"'\\s]+\.js(?:[?#][^"'\\s]*)?|["'](\/[^"']+\.js(?:[?#][^"']*)?)["'])/gi)];
+        for(const m of assetUrls)addUrl(m[1]||m[0]);
+        const idxs=[];
+        let m;
+        const re=new RegExp(interesting.source,"gi");
+        while((m=re.exec(js))!==null&&idxs.length<12)idxs.push(m.index);
+        for(const idx of idxs){
+          hits.push({url,term:js.slice(idx,idx+120).replace(/[^\x20-\x7E]/g," ").slice(0,120),snippet:clean(js.slice(Math.max(0,idx-220),Math.min(js.length,idx+500)))});
         }
-        console.log("Lucky Jet client bundle probe",JSON.stringify({
-          url,http_status:rr.status,ok:rr.ok,bytes:js.length,
-          matches:matches.slice(0,40)
+        console.log("Lucky Jet client asset probe",JSON.stringify({
+          url,http_status:rr.status,ok:rr.ok,bytes:js.length,linked_js_count:assetUrls.length,hits:hits.slice(-12)
         }));
-        if(matches.length)return;
       }catch(e){
-        console.log("Lucky Jet client bundle probe",JSON.stringify({url,ok:false,error:String(e.message||e)}));
+        console.log("Lucky Jet client asset probe",JSON.stringify({url,ok:false,error:String(e.message||e)}));
       }
     }
+    console.log("Lucky Jet client asset summary",JSON.stringify({
+      assets_checked:[...seen],
+      assets_queued:queue.length,
+      relevant_hits:hits.slice(0,30)
+    }));
   }catch(e){
-    console.log("Lucky Jet client bundle probe",JSON.stringify({ok:false,error:String(e.message||e)}));
+    console.log("Lucky Jet client asset probe",JSON.stringify({ok:false,error:String(e.message||e)}));
   }
 }
 
