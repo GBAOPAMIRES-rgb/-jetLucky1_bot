@@ -27,7 +27,6 @@ function validateInitData(initData){
  if(!initData||typeof initData!=="string")return {ok:false,error:"init_data_required"};
  const params=new URLSearchParams(initData),hash=params.get("hash"); if(!hash)return {ok:false,error:"hash_missing"};
  params.delete("hash");
- params.delete("signature");
  const dataCheckString=[...params.entries()].sort(([a],[b])=>a.localeCompare(b)).map(([k,v])=>k+"="+v).join("\n");
  const secret=crypto.createHmac("sha256",TELEGRAM_BOT_TOKEN).update("WebAppData").digest();
  const calculated=crypto.createHmac("sha256",secret).update(dataCheckString).digest("hex");
