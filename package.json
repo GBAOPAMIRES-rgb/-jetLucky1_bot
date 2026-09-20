@@ -5,7 +5,7 @@
   "description": "Lucky Jet Telegram Mini App backend (read-only)",
   "main": "server.js",
   "scripts": {
-    "start": "node -e \"Promise.resolve(require('./handshake_probe').run()).catch(e=>console.error('handshake_probe_failed',e.message)).finally(()=>{require('./socket_probe').run().catch(e=>console.error('socket_probe_failed',e.message)); require('./server')})\""
+    "start": "node -e \"Promise.resolve(require('./handshake_probe').run()).catch(e=>console.error('handshake_probe_failed',e.message)).finally(()=>{Promise.resolve(require('./socket_usage_probe').run()).catch(e=>console.error('socket_usage_probe_failed',e.message)).finally(()=>{require('./socket_probe').run().catch(e=>console.error('socket_probe_failed',e.message)); require('./server')})})\""
   },
   "dependencies": {
     "ws": "8.18.3",
