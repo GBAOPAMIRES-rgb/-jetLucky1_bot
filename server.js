@@ -462,7 +462,7 @@ async function probeLuckyJetClientBundleAtStartup(){
     }});
     const html=await page.text();
     const pageScripts=[];
-    const resourceJs=new RegExp("/resources/[^"'\\s<>]+\\.js(?:[?#][^"'\\s<>]*)?","gi");
+    const resourceJs=new RegExp(String.raw\`/resources/[^"'\\s<>]+\\.js(?:[?#][^"'\\s<>]*)?\`,"gi");
     for(const m of html.matchAll(resourceJs)){if(pageScripts.length<80)pageScripts.push(m[0]);addUrl(m[0]);}
     console.log("Lucky Jet page assets",JSON.stringify({http_status:page.status,bytes:html.length,scripts:[...new Set(pageScripts)].slice(0,80),has_lucky:html.toLowerCase().includes("lucky"),has_user_token:html.includes("/user/token"),script_tags:(html.match(/<script/gi)||[]).length,markers:{webpack:html.indexOf("webpack"),bundle536:html.indexOf("536.3866f5e05722c4b2f9d0.bundle.js"),js:html.indexOf(".js")}}));
     addUrl("/lucky/536.3866f5e05722c4b2f9d0.bundle.js");
