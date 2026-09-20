@@ -233,8 +233,11 @@ async function luckyJetBrowserProbe(){
       socket.on("connect",()=>{out.textContent="✅ Socket.IO connect подтверждён. Ждём события коэффициента…";});
       socket.onAny((event,data)=>{
         const raw=typeof data==="string"?data:JSON.stringify(data||{});
-        const m=raw.match(/(?:multiplier|coefficient|coef|factor|rate|x)\\"?\\s*[:=]\\s*([0-9]+(?:\\.[0-9]+)?)/i)||raw.match(/([0-9]+(?:\\.[0-9]+)?)x/i);
-        if(m){got=true;out.textContent="✅ Реальное событие получено: "+m[1]+"x\\nСобытие: "+String(event).slice(0,80);}
+        let value=null;
+        try{const o=typeof data==="string"?JSON.parse(data):data; const walk=v=>{if(v&&typeof v==="object"){for(const [k,val] of Object.entries(v)){if(value===null&&/multiplier|coefficient|coef|factor|rate/i.test(k)&&Number.isFinite(Number(val)))value=Number(val); else walk(val);}}}; walk(o);}catch{}
+        const m=raw.match(/([0-9]+(?:\\.[0-9]+)?)x/i);
+        if(value===null&&m)value=Number(m[1]);
+        if(value!==null&&Number.isFinite(value)){got=true;out.textContent="✅ Реальное событие получено: "+value+"x\\nСобытие: "+String(event).slice(0,80);}
       });
       socket.on("connect_error",e=>finish("❌ Socket.IO connect_error: "+(e?.message||"неизвестная ошибка")));
       setTimeout(()=>{if(!got)finish("⚠️ Соединение не дало коэффициент за 10 секунд. Это ещё не подтверждение источника.");},10500);
