@@ -156,8 +156,8 @@ async function probeLuckyJetLifecycleCredential(credential){
             if(msg.connect){
               authenticated=true;events.push("connect");
               const subs=msg.connect.subs||{};
-              if(subs[channel])subscribed=true;
-              else try{ws.send(JSON.stringify({id:2,subscribe:{channel}}))}catch{}
+              if(configuredChannel && subs[configuredChannel])subscribed=true;
+              else try{if(configuredChannel)ws.send(JSON.stringify({id:2,subscribe:{channel:configuredChannel}}))}catch{}
             }else if(msg.subscribe){subscribed=true;events.push("subscribe")}
             else if(msg.pub){pubs++;events.push("pub");if(msg.pub.data?.eventType)events.push(String(msg.pub.data.eventType))}
           }catch{}
