@@ -29,7 +29,7 @@ async function attempt(name, base, ssid){
       timeout:9000,
       withCredentials:true,
       extraHeaders:commonHeaders,
-      query:{Language:"en"}
+      query:{Language:"en",xorigin:"1wmljx.life",app:"frontend",...(process.env.LUCKYJET_CUSTOMER_ID?{customerId:String(process.env.LUCKYJET_CUSTOMER_ID)}:{}),...(process.env.LUCKYJET_SESSION_ID?{sessionId:String(process.env.LUCKYJET_SESSION_ID)}:{})}
     };
     if(name==="auth_token")opts.auth={token:ssid};
     if(name==="auth_ssid")opts.auth={ssid};
