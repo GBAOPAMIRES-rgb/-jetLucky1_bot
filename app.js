@@ -75,7 +75,7 @@ function center(title,subtitle,body){
 function signalScreen(){
   setScreen("Сигналы",'<div class="screen-page"><div class="screen-title"><span class="mini-label">LUCKY JET</span><h2>Сигналы</h2><p class="muted">Доступ открывается после регистрации и сохранения 1win ID.</p></div><div class="signal-panel"><div class="signal-card"><div class="signal-kicker">ПРОВЕРИТЬ КОЭФФИЦИЕНТ</div><button class="signal-main-btn" id="getSignal" aria-label="Получить коэффициент"><span class="rocket" id="signalRocket">🚀</span><span class="signal-coefficient" id="signalCoefficient">— —</span></button><div id="signalState" class="signal-state"></div></div></div></div>');
   const b=$("getSignal"),coefficient=$("signalCoefficient"),rocket=$("signalRocket"),state=$("signalState");
-  const locked=!(registered&&onewinId&&!restricted);
+  const locked=role!=="owner"&&!(registered&&onewinId&&!restricted);
   if(locked){b.classList.add("disabled");state.textContent=restricted?"Доступ ограничен владельцем":"Сначала зарегистрируйтесь и сохраните 1win ID в Профиле.";}
   b.onclick=async()=>{
     if(locked)return;
