@@ -458,7 +458,7 @@ async function probeLuckyJetClientBundleAtStartup(){
       .replace(/[A-Za-z0-9_-]{40,}/g,"<redacted-long>")
       .replace(/(Bearer\\s+)[^\\s"'<>]+/gi,"$1<redacted>")
       .replace(/(ssid|token|session|authorization)(\\s*[:=]\\s*)["'][^"']{20,}["']/gi,"$1$2\"<redacted>\"");
-    const targets=[/user\\/token/i,/user\\/auth/i,/websocket\\/lifecycle/i,/websocket\\/secondary/i,/\\bssid\\b/i,/authorization/i,/centrifugo/i,/subscribe/i,/changeCoefficient/i];
+    const targets=[new RegExp("user/token","i"),new RegExp("user/auth","i"),new RegExp("websocket/lifecycle","i"),new RegExp("websocket/secondary","i"),new RegExp("\\bssid\\b","i"),new RegExp("authorization","i"),new RegExp("centrifugo","i"),new RegExp("subscribe","i"),new RegExp("changeCoefficient","i")];
     for(const url of urls){
       try{
         const rr=await fetch(url,{headers:{
