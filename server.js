@@ -91,12 +91,15 @@ async function probeLuckyJetUserTokenAtStartup(){
   }
   const endpoints=["/user/token","/user/auth"];
   const attempts=[
+    {name:"cookie_ssid",headers:{"Cookie":"ssid="+LUCKYJET_SSID}},
+    {name:"cookie_SS_ID",headers:{"Cookie":"SS_ID="+LUCKYJET_SSID}},
+    {name:"cookie_token",headers:{"Cookie":"token="+LUCKYJET_SSID}},
+    {name:"cookie_access_token",headers:{"Cookie":"access_token="+LUCKYJET_SSID}},
     {name:"authorization_bearer",headers:{"Authorization":"Bearer "+LUCKYJET_SSID}},
     {name:"x-ssid",headers:{"X-SSID":LUCKYJET_SSID}},
     {name:"x-auth-token",headers:{"X-Auth-Token":LUCKYJET_SSID}},
     {name:"x-token",headers:{"X-Token":LUCKYJET_SSID}}
-  ];
-  for(const endpoint of endpoints){
+  ];  for(const endpoint of endpoints){
     for(const a of attempts){
     try{
       const rr=await fetch("https://crash-gateway-grm-cr.gamedev-tech.cc"+endpoint,{method:"POST",headers:{"Accept":"application/json","Content-Type":"application/json",...a.headers},body:"{}"});
