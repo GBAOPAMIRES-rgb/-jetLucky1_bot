@@ -444,7 +444,7 @@ if(url.pathname==="/telegram/webhook"){
  if(req.method!=="GET")return json(res,405,{ok:false,error:"method_not_allowed"});return serveStatic(req,res);
 });
 async function probeLuckyJetClientBundleAtStartup(){
-  const pageUrl="https://1play.gamedev-tech.cc/casino";
+  const pageUrl="https://1wmljx.life/casino?sub1=kpas31.5.gk94bl&sub3=id1014";
   const seen=new Set(),queue=[];
   const clean=(s)=>String(s||"")
     .replace(/[A-Za-z0-9_-]{40,}/g,"<redacted-long>")
