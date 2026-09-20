@@ -261,7 +261,7 @@ const server=http.createServer(async(req,res)=>{
         activeUrl=target.url;
         opened=false;connected=false;subscribed=false;
         let attemptDone=false;
-        const retry=()=>{if(attemptDone||settled)return;attemptDone=true;const current=ws;try{current?.removeAllListeners()}catch{};try{if(current?.readyState===WebSocket.OPEN||current?.readyState===WebSocket.CLOSING)current.close();else if(current?.readyState===WebSocket.CONNECTING)current.terminate()}catch{};ws=null;setTimeout(attempt,25)};
+        const retry=()=>{if(attemptDone||settled)return;attemptDone=true;const current=ws;try{if(current?.readyState===WebSocket.OPEN||current?.readyState===WebSocket.CLOSING)current.close();else if(current?.readyState===WebSocket.CONNECTING)current.terminate()}catch{};ws=null;setTimeout(attempt,25)};
         const openAttempt=()=>{const origin=target.origin;try{ws=new WebSocket(activeUrl,{handshakeTimeout:7000,headers:origin?{Origin:origin}:{}})}catch(e){events.push("socket_create_error");retry();return}
         ws.once("unexpected-response",(req,response)=>{const status=response?.statusCode||null;const headers=response?.headers||{};const body=[];response?.on("data",d=>{if(body.join("").length<500)body.push(Buffer.isBuffer(d)?d.toString("utf8"):String(d))});response?.on("end",()=>{connectError={code:status,message:"WebSocket HTTP handshake rejected",type:"unexpected_response",origin:origin||null,server:headers.server||null,allowOrigin:headers["access-control-allow-origin"]||null,body:body.join("").slice(0,500)||null};events.push("http_"+String(status));retry()})});
         ws.once("open",()=>{opened=true;send({id:1,connect:{token,name:"jetLucky1"}})});
