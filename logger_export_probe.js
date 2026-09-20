@@ -8,7 +8,7 @@ async function run(){
   console.log("Lucky Jet logger export probe",JSON.stringify({status:r.status,bytes:r.body.length}));
   if(r.status!==200)return;
   const s=r.body;
-  const needles=["AR as al","al:AR","export{","AR("];
+  const needles=["AR as al","al:AR","export{","AR(","const AR=","let AR=","var AR=","AR=()=>","AR=async","AR=(()=>"];
   for(const n of needles){
    const ps=[];let p=0;
    while((p=s.indexOf(n,p))>=0&&ps.length<8){ps.push({pos:p,snippet:red(s.slice(Math.max(0,p-900),Math.min(s.length,p+1500)))});p+=n.length;}
