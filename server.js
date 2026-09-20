@@ -189,8 +189,9 @@ const server=http.createServer(async(req,res)=>{
       ws.once("error",e=>{if(!settled){clearTimeout(timer);finish({ok:false,connected:false,url:LUCKYJET_WS_URL,latency_ms:Date.now()-started,messages,first_message:firstMessage,error:"gateway_connection_failed",message:String(e.message||e)})}});
       ws.once("close",(code)=>{if(!settled){clearTimeout(timer);finish({ok:false,connected:opened,url:LUCKYJET_WS_URL,close_code:code,messages,first_message:firstMessage,error:opened?"gateway_closed":"gateway_closed_before_open"})}});
     });
+    console.log("Lucky Jet gateway test result",JSON.stringify({ok:result.ok,connected:result.connected,url:result.url,error:result.error||null,status:result.status||null,server:result.server||null,allowOrigin:result.allowOrigin||null,response_body:result.response_body||null,messages:result.messages||0}));
     return json(res,200,result);
-  }catch(e){return json(res,200,{ok:false,connected:false,error:"gateway_test_failed",message:String(e.message||e)})}
+  }catch(e){console.error("Lucky Jet gateway test failed",String(e.message||e));return json(res,200,{ok:false,connected:false,error:"gateway_test_failed",message:String(e.message||e)})}
  }
  if(url.pathname==="/api/luckyjet-protocol-test"&&req.method==="GET"){
   const r=validateInitData(req.headers["x-telegram-init-data"]||"");
