@@ -14,6 +14,7 @@ async function run(){
    while((p=s.indexOf(n,p))>=0&&ps.length<8){ps.push({pos:p,snippet:red(s.slice(Math.max(0,p-900),Math.min(s.length,p+1500)))});p+=n.length;}
    console.log("Lucky Jet logger exact search",JSON.stringify({needle:n,count:ps.length,hits:ps}));
   }
+  const arAll=[]; let q=0; while((q=s.indexOf("AR",q))>=0&&arAll.length<40){arAll.push({pos:q,snippet:red(s.slice(Math.max(0,q-500),Math.min(s.length,q+900)))});q+=2;} console.log("Lucky Jet logger AR occurrences",JSON.stringify({count:arAll.length,hits:arAll}));
   const map=await get(BASE+".map");
   console.log("Lucky Jet logger sourcemap",JSON.stringify({status:map.status,bytes:map.body.length}));
   if(map.status===200){
