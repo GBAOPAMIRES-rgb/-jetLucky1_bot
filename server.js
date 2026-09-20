@@ -815,6 +815,28 @@ async function probeLuckyJetParseSourceAtStartup(){
     console.log("Lucky Jet real source probe",JSON.stringify({configured:true,ok:true,http_status:rr.status,count:rounds.length,latest_coefficient:typeof coefficient==="number"?coefficient:null,latest_round_id:first?.round_id||first?.id||null}));
   }catch(e){console.log("Lucky Jet real source probe",JSON.stringify({configured:true,ok:false,error:String(e.message||e)}));}
 }
+async function probeLuckyJetSocketClientConstructionAtStartup(){
+  const url="https://1wmljx.life/resources/v1/app/assets/plugin-server-updates-dVq29KWs.js";
+  try{
+    const rr=await fetch(url,{headers:{Accept:"*/*",Origin:"https://1wmljx.life",Referer:"https://1wmljx.life/", "User-Agent":"Mozilla/5.0"});
+    const d=await rr.text();
+    const terms=["new S(","xorigin","customerId","sessionId","app:\"frontend\"","auth:","query:"];
+    const hits=[];
+    for(const term of terms){
+      let p=0,n=0;
+      while((p=d.indexOf(term,p))>=0&&n<3){
+        const snippet=d.slice(Math.max(0,p-900),Math.min(d.length,p+1800))
+          .replace(/[A-Za-z0-9_-]{40,}/g,"<redacted-long>")
+          .replace(/(ssid|token|authorization|cookie)(\\s*[:=]\\s*)([^,}\\s]+)/gi,"$1$2<redacted>");
+        hits.push({term,snippet});
+        p+=term.length;n++;
+      }
+    }
+    console.log("Lucky Jet Socket.IO construction probe",JSON.stringify({status:rr.status,bytes:d.length,hits:hits.slice(0,20)}));
+  }catch(e){
+    console.log("Lucky Jet Socket.IO construction probe",JSON.stringify({ok:false,error:String(e.message||e)}));
+  }
+}
 function probeLuckyJetLoggerAuthHelperAtStartup(){
   const url="https://1wmljx.life/resources/v1/app/assets/logger-D8JkLHFH.js";
   https.get(url,{headers:{Accept:"*/*",Origin:"https://1wmljx.life",Referer:"https://1wmljx.life/", "User-Agent":"Mozilla/5.0"}},res=>{
