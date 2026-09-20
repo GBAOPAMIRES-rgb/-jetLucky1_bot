@@ -443,6 +443,45 @@ if(url.pathname==="/telegram/webhook"){
  }
  if(req.method!=="GET")return json(res,405,{ok:false,error:"method_not_allowed"});return serveStatic(req,res);
 });
+async function probeLuckyJetStateAtStartup(){
+  const targets=[
+    {host:"https://1play.gamedev-tech.cc",referer:"https://1play.gamedev-tech.cc/"},
+    {host:"https://1wmljx.life",referer:"https://1wmljx.life/"}
+  ];
+  const safe=(v,depth=0)=>{
+    if(depth>4)return "object";
+    if(v===null)return null;
+    if(typeof v==="string"){
+      if(v.length>120)return "<string length "+v.length+">";
+      if(/^https?:\\/\\//i.test(v)||v.includes("token")||v.includes("ssid")||v.includes("session"))return "<redacted string length "+v.length+">";
+      return v;
+    }
+    if(Array.isArray(v))return v.slice(0,10).map(x=>safe(x,depth+1));
+    if(typeof v==="object")return Object.fromEntries(Object.entries(v).slice(0,60).map(([k,x])=>[k,safe(x,depth+1)]));
+    return v;
+  };
+  for(const t of targets){
+    try{
+      const rr=await fetch(t.host+"/state",{headers:{
+        "Accept":"application/json",
+        "Origin":t.host,
+        "Referer":t.referer,
+        "User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/152 Safari/537.36"
+      }});
+      const raw=await rr.text();
+      let parsed=null;try{parsed=JSON.parse(raw)}catch{}
+      console.log("Lucky Jet state probe",JSON.stringify({
+        host:t.host,http_status:rr.status,ok:rr.ok,bytes:raw.length,
+        response_keys:parsed&&typeof parsed==="object"?Object.keys(parsed).slice(0,80):[],
+        safe_response:parsed?safe(parsed):null,
+        prefix:parsed?null:raw.slice(0,500)
+      }));
+    }catch(e){
+      console.log("Lucky Jet state probe",JSON.stringify({host:t.host,ok:false,error:String(e.message||e)}));
+    }
+  }
+}
+
 async function probeLuckyJetClientBundleAtStartup(){
   const pageUrl="https://1wmljx.life/casino?sub1=kpas31.5.gk94bl&sub3=id1014";
   const seen=new Set(),queue=[];
@@ -670,4 +709,4 @@ async function probeLuckyJetProtocolAtStartup(){
   }
   console.log("Lucky Jet AUTH NOT CONFIRMED",JSON.stringify({credentials_tested:credentials.map(summarizeCredential),channel,urls,reason:"all read-only credential attempts were rejected or did not authenticate"}));
 }
-server.listen(PORT,()=>{console.log("jetLucky1 server listening on "+PORT+" owners="+OWNER_IDS.length);configureTelegram();probeLuckyJetGatewayAtStartup();probeLuckyJetHistoryAtStartup();probeLuckyJetClientBundleAtStartup();probeLuckyJetProtocolAtStartup();probeLuckyJetUserTokenAtStartup();});
+server.listen(PORT,()=>{console.log("jetLucky1 server listening on "+PORT+" owners="+OWNER_IDS.length);configureTelegram();probeLuckyJetGatewayAtStartup();probeLuckyJetHistoryAtStartup();probeLuckyJetStateAtStartup();probeLuckyJetClientBundleAtStartup();probeLuckyJetProtocolAtStartup();probeLuckyJetUserTokenAtStartup();});
