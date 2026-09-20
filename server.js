@@ -11,6 +11,7 @@ const MINI_APP_URL=process.env.MINI_APP_URL||"https://jetlucky1.onrender.com";
 const PARSE_API_KEY=process.env.PARSE_API_KEY||"";
 const PARSE_LUCKYJET_URL="https://api.parse.bot/scraper/dfcd37a4-42ee-4914-824f-2651f659871d/get_rounds_history";
 const WEBHOOK_URL=process.env.WEBHOOK_URL||"https://jetlucky1.onrender.com/telegram/webhook";
+const LUCKYJET_SSID=String(process.env.LUCKYJET_SSID||"").trim();
 const ROOT=__dirname;
 const DATA_FILE=path.join(ROOT,".luckyjet-users.json");const SETTINGS_FILE=path.join(ROOT,".luckyjet-settings.json");const settings=(()=>{try{return JSON.parse(fs.readFileSync(SETTINGS_FILE,"utf8"))||{paused:false}}catch{return {paused:false}}})();function saveSettings(){try{fs.writeFileSync(SETTINGS_FILE,JSON.stringify(settings,null,2))}catch(e){console.error("settings_store_error",e.message)}}
 const users=(()=>{try{return JSON.parse(fs.readFileSync(DATA_FILE,"utf8"))||{}}catch{return {}}})();
@@ -108,6 +109,13 @@ const server=http.createServer((req,res)=>{
   }
  }
 
+ if(url.pathname==="/api/luckyjet-ssid-test"&&req.method==="GET"){
+  const r=validateInitData(req.headers["x-telegram-init-data"]||"");
+  if(!r.ok)return json(res,401,{ok:false,error:r.error});
+  if(!OWNER_IDS.includes(String(r.user.id)))return json(res,403,{ok:false,error:"owner_only"});
+  if(!LUCKYJET_SSID)return json(res,200,{ok:false,configured:false,source:"luckyjet_ssid",error:"luckyjet_ssid_not_configured",message:"LUCKYJET_SSID не настроен. Внешнее подключение не выполнялось."});
+  return json(res,200,{ok:true,configured:true,source:"luckyjet_ssid",ssid_present:true,ssid_length:LUCKYJET_SSID.length,external_test:false,message:"LUCKYJET_SSID получен сервером. Значение не раскрывается; внешнее подключение пока не выполняется."});
+ }
  if(url.pathname==="/api/luckyjet-source-test"&&req.method==="GET"){
   const r=validateInitData(req.headers["x-telegram-init-data"]||"");
   if(!r.ok)return json(res,401,{ok:false,error:r.error});
