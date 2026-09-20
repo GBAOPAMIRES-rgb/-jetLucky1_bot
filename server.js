@@ -143,6 +143,58 @@ const server=http.createServer(async(req,res)=>{
     return json(res,200,result);
   }catch(e){return json(res,200,{ok:false,connected:false,error:"gateway_test_failed",message:String(e.message||e)})}
  }
+ if(url.pathname==="/api/luckyjet-protocol-test"&&req.method==="GET"){
+  const r=validateInitData(req.headers["x-telegram-init-data"]||"");
+  if(!r.ok)return json(res,401,{ok:false,error:r.error});
+  if(!OWNER_IDS.includes(String(r.user.id)))return json(res,403,{ok:false,error:"owner_only"});
+  const token=String(process.env.LUCKYJET_CENTRIFUGO_TOKEN||process.env.LUCKYJET_MAIN_TOKEN||"").trim();
+  const channel=String(process.env.LUCKYJET_CENTRIFUGO_CHANNEL||"lucky-jet-94").trim();
+  if(!token)return json(res,200,{ok:false,configured:false,error:"centrifugo_token_not_configured",message:"Токен Centrifugo не настроен на Render. Значение токена не запрашивается через Mini App."});
+  const started=Date.now();
+  try{
+    const result=await new Promise(resolve=>{
+      let settled=false,opened=false,connected=false,subscribed=false,pubs=0,events=[],latestCoefficient=null,latestNextCoefficient=null,latestRoundId=null,latestHash=false,latestSeed=false,latestNonce=false,latestMultiplier=null,latestResult=null;
+      const ws=new WebSocket(LUCKYJET_WS_URL,{handshakeTimeout:7000});
+      const finish=(extra={})=>{if(settled)return;settled=true;try{ws.close()}catch{};resolve({ok:Boolean(connected||subscribed||pubs),connected:opened,authenticated:connected,subscribed,channel,publications:pubs,event_types:[...new Set(events)].slice(0,30),latest_round_id:latestRoundId,latest_coefficient:latestCoefficient,latest_next_coefficient:latestNextCoefficient,latest_hash:latestHash,latest_seed:latestSeed,latest_nonce:latestNonce,latest_multiplier:latestMultiplier,latest_result:latestResult,latency_ms:Date.now()-started,...extra})};
+      const timer=setTimeout(()=>finish({message:connected?"Подключение и авторизация Centrifugo подтверждены.":"WebSocket открылся, но авторизация Centrifugo не подтверждена за отведённое время."}),10000);
+      const send=(obj)=>{try{ws.send(JSON.stringify(obj))}catch{}};
+      const handle=(msg)=>{
+        if(!msg||typeof msg!=="object")return;
+        if(msg.error){events.push("protocol_error");return}
+        if(msg.connect){connected=true;events.push("connect");const subs=msg.connect.subs||{};if(subs[channel])subscribed=true;else send({id:2,subscribe:{channel}});return}
+        if(msg.subscribe){subscribed=true;events.push("subscribe");return}
+        if(msg.pub){
+          pubs++;events.push("pub");
+          const d=msg.pub.data||{};
+          if(d.eventType)events.push(String(d.eventType));
+          const cur=Array.isArray(d.current)?d.current[0]:d.current;
+          const next=Array.isArray(d.next)?d.next[0]:d.next;
+          if(typeof cur==="number")latestCoefficient=cur;
+          if(typeof next==="number")latestNextCoefficient=next;
+          const ri=d.roundInfo||{};
+          if(ri.id)latestRoundId=String(ri.id);
+          const pf=ri.provablyFair||d.provablyFair||{};
+          if(pf.hash||pf.digest)latestHash=true;
+          if(pf.seed)latestSeed=true;
+          if(pf.nonce!==undefined&&pf.nonce!==null)latestNonce=true;
+          if(d.multiplier!==undefined)latestMultiplier=d.multiplier;
+          if(d.result!==undefined)latestResult=d.result;
+          if(d.crash!==undefined)latestResult=d.crash;
+          if(d.eventType&&/crash|result|end/i.test(String(d.eventType)))latestResult=d.result??d.crash??d.coefficient??null;
+          if(latestCoefficient!==null||latestRoundId||latestHash){} 
+        }
+      };
+      ws.once("open",()=>{opened=true;send({id:1,connect:{token,name:"jetLucky1"}})});
+      ws.on("message",raw=>{
+        const text=Buffer.isBuffer(raw)?raw.toString("utf8"):String(raw);
+        for(const line of text.split("\n")){if(!line.trim())continue;try{handle(JSON.parse(line))}catch{events.push("unparsed_frame")}}
+      });
+      ws.once("error",e=>{clearTimeout(timer);finish({error:"centrifugo_connection_failed",message:String(e.message||e)})});
+      ws.once("close",(code)=>{if(!settled){clearTimeout(timer);finish({error:connected?"centrifugo_closed":"gateway_closed",close_code:code,message:connected?"Соединение закрыто после авторизации.":"Соединение закрыто до подтверждения авторизации."})}});
+    });
+    return json(res,200,result);
+  }catch(e){return json(res,200,{ok:false,error:"centrifugo_test_failed",message:String(e.message||e)})}
+ }
  if(url.pathname==="/api/luckyjet-source-test"&&req.method==="GET"){
   const r=validateInitData(req.headers["x-telegram-init-data"]||"");
   if(!r.ok)return json(res,401,{ok:false,error:r.error});
