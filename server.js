@@ -27,10 +27,19 @@ function validateInitData(initData){
  if(!initData||typeof initData!=="string")return {ok:false,error:"init_data_required"};
  const params=new URLSearchParams(initData),hash=params.get("hash"); if(!hash)return {ok:false,error:"hash_missing"};
  params.delete("hash");
- const dataCheckString=[...params.entries()].sort(([a],[b])=>a.localeCompare(b)).map(([k,v])=>k+"="+v).join("\n");
- const secret=crypto.createHmac("sha256",TELEGRAM_BOT_TOKEN).update("WebAppData").digest();
- const calculated=crypto.createHmac("sha256",secret).update(dataCheckString).digest("hex");
- if(hash.length!==calculated.length||!crypto.timingSafeEqual(Buffer.from(hash),Buffer.from(calculated)))return {ok:false,error:"init_data_invalid"};
+ const secret=crypto.createHmac("sha256",TELEGRAM_BOT_TOKEN.trim()).update("WebAppData").digest();
+ const buildCheck=(includeSignature)=>{
+  const p=new URLSearchParams(params.toString());
+  if(!includeSignature)p.delete("signature");
+  return [...p.entries()].sort(([a],[b])=>a.localeCompare(b)).map(([k,v])=>k+"="+v).join("\n");
+ };
+ const calculatedWithSignature=crypto.createHmac("sha256",secret).update(buildCheck(true)).digest("hex");
+ const calculatedWithoutSignature=crypto.createHmac("sha256",secret).update(buildCheck(false)).digest("hex");
+ const matches=(calculated)=>{
+  const a=Buffer.from(String(hash),"utf8"),b=Buffer.from(calculated,"utf8");
+  return a.length===b.length&&crypto.timingSafeEqual(a,b);
+ };
+ if(!matches(calculatedWithSignature)&&!matches(calculatedWithoutSignature))return {ok:false,error:"init_data_invalid"};
  let user;try{user=JSON.parse(params.get("user")||"null");}catch{return {ok:false,error:"user_invalid"}}
  if(!user?.id)return {ok:false,error:"user_missing"};return {ok:true,user};
 }
