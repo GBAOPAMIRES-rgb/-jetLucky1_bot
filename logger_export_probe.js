@@ -1,6 +1,6 @@
 const https=require("https");
 const BASE="https://1wmljx.life/resources/v1/app/assets/logger-D8JkLHFH.js";
-function get(url){return new Promise((resolve,reject)=>https.get(url,{headers:{"User-Agent":"Mozilla/5.0","Accept":"*/*","Origin":"https://1wmljx.life","Referer":"https://1wmljx.life/"}},r=>{let b="";r.setEncoding("utf8");r.on("data",x=>b+=x);r.on("end",()=>resolve({status:r.statusCode||0,body:b}));}).on("error",reject)});}
+function get(url){return new Promise((resolve,reject)=>https.get(url,{headers:{"User-Agent":"Mozilla/5.0","Accept":"*/*","Origin":"https://1wmljx.life","Referer":"https://1wmljx.life/"}},r=>{let b="";r.setEncoding("utf8");r.on("data",x=>b+=x);r.on("end",()=>resolve({status:r.statusCode||0,body:b}));}).on("error",reject));}
 function red(s){return String(s).replace(/(["'])(?:token|ssid|authorization|cookie|access[_-]?token|session[_-]?id|customer[_-]?id)\1\s*[:=]\s*[^,;}]+/gi,"$1<redacted>$1").replace(/[A-Za-z0-9_-]{120,}/g,"<redacted-long>");}
 async function run(){
  try{
