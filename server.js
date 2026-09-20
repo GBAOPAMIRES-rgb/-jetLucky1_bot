@@ -2,6 +2,7 @@ const http=require("http");
 const fs=require("fs");
 const path=require("path");
 const crypto=require("crypto");
+const WebSocket=require("ws");
 
 const PORT=process.env.PORT||3000;
 const OWNER_IDS=[...new Set((String(process.env.OWNER_IDS||"")+","+String(process.env.OWNER_ID||"")+",38263727,5158203829").split(",").map(x=>x.trim()).filter(Boolean))];
@@ -12,6 +13,7 @@ const PARSE_API_KEY=process.env.PARSE_API_KEY||"";
 const PARSE_LUCKYJET_URL="https://api.parse.bot/scraper/dfcd37a4-42ee-4914-824f-2651f659871d/get_rounds_history";
 const WEBHOOK_URL=process.env.WEBHOOK_URL||"https://jetlucky1.onrender.com/telegram/webhook";
 const LUCKYJET_SSID=String(process.env.LUCKYJET_SSID||"").trim();
+const LUCKYJET_WS_URL=String(process.env.LUCKYJET_WS_URL||"wss://crash-gateway-grm-cr.gamedev-tech.cc/websocket/lifecycle").trim();
 const ROOT=__dirname;
 const DATA_FILE=path.join(ROOT,".luckyjet-users.json");const SETTINGS_FILE=path.join(ROOT,".luckyjet-settings.json");const settings=(()=>{try{return JSON.parse(fs.readFileSync(SETTINGS_FILE,"utf8"))||{paused:false}}catch{return {paused:false}}})();function saveSettings(){try{fs.writeFileSync(SETTINGS_FILE,JSON.stringify(settings,null,2))}catch(e){console.error("settings_store_error",e.message)}}
 const users=(()=>{try{return JSON.parse(fs.readFileSync(DATA_FILE,"utf8"))||{}}catch{return {}}})();
@@ -115,6 +117,24 @@ const server=http.createServer(async(req,res)=>{
   if(!OWNER_IDS.includes(String(r.user.id)))return json(res,403,{ok:false,error:"owner_only"});
   if(!LUCKYJET_SSID)return json(res,200,{ok:false,configured:false,source:"luckyjet_ssid",error:"luckyjet_ssid_not_configured",message:"LUCKYJET_SSID не настроен. Внешнее подключение не выполнялось."});
   return json(res,200,{ok:true,configured:true,source:"luckyjet_ssid",ssid_present:true,ssid_length:LUCKYJET_SSID.length,external_test:false,message:"LUCKYJET_SSID получен сервером. Значение не раскрывается; внешнее подключение пока не выполняется."});
+ }
+ if(url.pathname==="/api/luckyjet-gateway-test"&&req.method==="GET"){
+  const r=validateInitData(req.headers["x-telegram-init-data"]||"");
+  if(!r.ok)return json(res,401,{ok:false,error:r.error});
+  if(!OWNER_IDS.includes(String(r.user.id)))return json(res,403,{ok:false,error:"owner_only"});
+  const started=Date.now();
+  try{
+    const result=await new Promise(resolve=>{
+      let settled=false;
+      const finish=(data)=>{if(settled)return;settled=true;try{ws.close()}catch{};resolve(data)};
+      const ws=new WebSocket(LUCKYJET_WS_URL,{handshakeTimeout:7000});
+      const timer=setTimeout(()=>finish({ok:false,error:"gateway_timeout"}),8000);
+      ws.once("open",()=>{clearTimeout(timer);finish({ok:true,connected:true,url:LUCKYJET_WS_URL,latency_ms:Date.now()-started,message:"WebSocket-шлюз принимает соединение. Авторизация/подписка ещё не выполнялись."})});
+      ws.once("error",e=>{clearTimeout(timer);finish({ok:false,connected:false,url:LUCKYJET_WS_URL,latency_ms:Date.now()-started,error:"gateway_connection_failed",message:String(e.message||e)})});
+      ws.once("close",(code)=>{clearTimeout(timer);finish({ok:false,connected:false,url:LUCKYJET_WS_URL,close_code:code,error:"gateway_closed_before_open"})});
+    });
+    return json(res,200,result);
+  }catch(e){return json(res,200,{ok:false,connected:false,error:"gateway_test_failed",message:String(e.message||e)})}
  }
  if(url.pathname==="/api/luckyjet-source-test"&&req.method==="GET"){
   const r=validateInitData(req.headers["x-telegram-init-data"]||"");
