@@ -258,8 +258,20 @@ const server=http.createServer(async(req,res)=>{
         activeUrl=protocolUrls[index++];
         opened=false;connected=false;subscribed=false;
         let attemptDone=false;
+        const origins=["","https://1wmljx.life"];
+        let originIndex=0;
         const retry=()=>{if(attemptDone||settled)return;attemptDone=true;try{ws?.removeAllListeners()}catch{};try{ws?.close()}catch{};attempt()};
-        try{ws=new WebSocket(activeUrl,{handshakeTimeout:7000});}catch(e){events.push("socket_create_error");retry();return}
+        const openAttempt=()=>{const origin=origins[originIndex++];try{ws=new WebSocket(activeUrl,{handshakeTimeout:7000,headers:origin?{Origin:origin}:{}})}catch(e){events.push("socket_create_error");retry();return}
+        ws.once("unexpected-response",(req,response)=>{const status=response?.statusCode||null;const headers=response?.headers||{};const body=[];response?.on("data",d=>{if(body.join("").length<500)body.push(Buffer.isBuffer(d)?d.toString("utf8"):String(d))});response?.on("end",()=>{connectError={code:status,message:"WebSocket HTTP handshake rejected",type:"unexpected_response",origin:origin||null,server:headers.server||null,allowOrigin:headers["access-control-allow-origin"]||null,body:body.join("").slice(0,500)||null};events.push("http_"+String(status));retry()})});
+        ws.once("open",()=>{opened=true;send({id:1,connect:{token,name:"jetLucky1"}})});
+        ws.on("message",raw=>{
+          const text=Buffer.isBuffer(raw)?raw.toString("utf8"):String(raw);
+          for(const line of text.split("\n")){if(!line.trim())continue;try{handle(JSON.parse(line))}catch{events.push("unparsed_frame")}}
+        });
+        ws.once("error",e=>{events.push("ws_error");if(!settled&&!connectError){protocolError={code:null,message:String(e.message||e),type:"websocket_error"};}if(!opened)retry()});
+        ws.once("close",(code,reason)=>{if(!settled&&!connected&&opened){events.push("closed_"+code);if(!protocolError)protocolError={code, message:Buffer.isBuffer(reason)?reason.toString("utf8"):String(reason||""),type:"websocket_close"};retry()}});
+        };
+        try{openAttempt();}catch(e){events.push("socket_create_error");retry();return}
         ws.once("open",()=>{opened=true;send({id:1,connect:{token,name:"jetLucky1"}})});
         ws.on("message",raw=>{
           const text=Buffer.isBuffer(raw)?raw.toString("utf8"):String(raw);
