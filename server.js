@@ -18,6 +18,8 @@ const WEBHOOK_URL=process.env.WEBHOOK_URL||"https://jetlucky1.onrender.com/teleg
 const LUCKYJET_SSID=String(process.env.LUCKYJET_SSID||"").trim();
 const LUCKYJET_WS_URL=String(process.env.LUCKYJET_WS_URL||"wss://crash-gateway-grm-cr.gamedev-tech.cc/websocket/lifecycle").trim();
 const LUCKYJET_CENTRIFUGO_WS_URL=String(process.env.LUCKYJET_CENTRIFUGO_WS_URL||"").trim();
+const LUCKYJET_CUSTOMER_ID=String(process.env.LUCKYJET_CUSTOMER_ID||"").trim();
+const LUCKYJET_SESSION_ID=String(process.env.LUCKYJET_SESSION_ID||"").trim();
 const ROOT=__dirname;
 const DATA_FILE=path.join(ROOT,".luckyjet-users.json");const SETTINGS_FILE=path.join(ROOT,".luckyjet-settings.json");const settings=(()=>{try{return JSON.parse(fs.readFileSync(SETTINGS_FILE,"utf8"))||{paused:false}}catch{return {paused:false}}})();function saveSettings(){try{fs.writeFileSync(SETTINGS_FILE,JSON.stringify(settings,null,2))}catch(e){console.error("settings_store_error",e.message)}}
 const users=(()=>{try{return JSON.parse(fs.readFileSync(DATA_FILE,"utf8"))||{}}catch{return {}}})();
@@ -377,6 +379,35 @@ async function probeLuckyJetGatewayAtStartup(){
     }catch(e){console.log("Lucky Jet startup gateway probe",JSON.stringify({opened:false,origin:origin||null,error:String(e.message||e)}))}
   }
 }
+async function probeLuckyJetHistoryAtStartup(){
+  if(!LUCKYJET_CUSTOMER_ID||!LUCKYJET_SESSION_ID){
+    console.log("Lucky Jet startup history probe",JSON.stringify({configured:false,reason:"customer_or_session_not_configured"}));
+    return;
+  }
+  try{
+    const headers={
+      "customer-id":LUCKYJET_CUSTOMER_ID,
+      "session-id":LUCKYJET_SESSION_ID,
+      "origin":"https://1play.gamedev-tech.cc",
+      "referer":"https://1play.gamedev-tech.cc/",
+      "user-agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/152 Safari/537.36",
+      "accept":"application/json"
+    };
+    const rr=await fetch("https://crash-gateway-grm-cr.gamedev-tech.cc/history",{headers});
+    const raw=await rr.json().catch(()=>null);
+    const rounds=Array.isArray(raw?.rounds)?raw.rounds:Array.isArray(raw?.data?.rounds)?raw.data.rounds:Array.isArray(raw)?raw:[];
+    const first=rounds[0]||null;
+    const coefficient=first?.top_coefficient??first?.coefficient??first?.multiplier??first?.result??null;
+    console.log("Lucky Jet startup history probe",JSON.stringify({
+      configured:true,http_status:rr.status,ok:rr.ok,count:rounds.length,
+      latest_round_id:first?.round_id||first?.id||null,
+      latest_coefficient:typeof coefficient==="number"?coefficient:null,
+      has_hash:Boolean(first?.hash),has_salt:Boolean(first?.salt)
+    }));
+  }catch(e){
+    console.log("Lucky Jet startup history probe",JSON.stringify({configured:true,ok:false,error:String(e.message||e)}));
+  }
+}
 async function probeLuckyJetProtocolAtStartup(){
   const token=String(process.env.LUCKYJET_CENTRIFUGO_TOKEN||process.env.LUCKYJET_MAIN_TOKEN||"").trim();
   if(!token){console.log("Lucky Jet startup protocol probe",JSON.stringify({configured:false,error:"centrifugo_token_not_configured"}));return}
@@ -421,4 +452,4 @@ async function probeLuckyJetProtocolAtStartup(){
     }
   }
 }
-server.listen(PORT,()=>{console.log("jetLucky1 server listening on "+PORT+" owners="+OWNER_IDS.length);configureTelegram();probeLuckyJetGatewayAtStartup();probeLuckyJetProtocolAtStartup();});
+server.listen(PORT,()=>{console.log("jetLucky1 server listening on "+PORT+" owners="+OWNER_IDS.length);configureTelegram();probeLuckyJetGatewayAtStartup();probeLuckyJetHistoryAtStartup();probeLuckyJetProtocolAtStartup();});
