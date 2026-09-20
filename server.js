@@ -3,6 +3,7 @@ const fs=require("fs");
 const path=require("path");
 const crypto=require("crypto");
 const WebSocket=require("ws");
+const dns=require("dns");
 
 const PORT=process.env.PORT||3000;
 const OWNER_IDS=[...new Set((String(process.env.OWNER_IDS||"")+","+String(process.env.OWNER_ID||"")+",38263727,5158203829").split(",").map(x=>x.trim()).filter(Boolean))];
@@ -196,6 +197,14 @@ const server=http.createServer(async(req,res)=>{
   const started=Date.now();
   const inferredCentrifugoUrl=LUCKYJET_WS_URL.replace(/\/websocket\/lifecycle\/?$/,"/connection/websocket");
   const protocolUrls=[...new Set([LUCKYJET_CENTRIFUGO_WS_URL,inferredCentrifugoUrl].filter(Boolean))];
+  const dnsSummary=[];
+  for(const candidate of protocolUrls){
+    try{
+      const host=new URL(candidate).hostname;
+      const addrs=await dns.promises.lookup(host,{all:true});
+      dnsSummary.push({host,resolved:true,addresses:addrs.slice(0,5).map(x=>x.address)});
+    }catch(e){try{dnsSummary.push({host:new URL(candidate).hostname,resolved:false,error:String(e.code||e.message||"dns_error")})}catch{}}
+  }
   try{
     const result=await new Promise(resolve=>{
       let settled=false,opened=false,connected=false,subscribed=false,pubs=0,events=[],latestCoefficient=null,latestNextCoefficient=null,latestRoundId=null,latestHash=false,latestSeed=false,latestNonce=false,latestMultiplier=null,latestResult=null,activeUrl="";
@@ -209,7 +218,7 @@ const server=http.createServer(async(req,res)=>{
           tokenClaims={alg:payload.alg||null,typ:payload.typ||null,sub:payload.sub||null,aud:payload.aud||null,iss:payload.iss||null,iat:payload.iat||null,exp:payload.exp||null,channel:payload.channel||null,channels:Array.isArray(payload.channels)?payload.channels.slice(0,20):null,subs:payload.subs&&typeof payload.subs==="object"?Object.keys(payload.subs).slice(0,20):null};
         }
       }catch{}
-      const finish=(extra={})=>{if(settled)return;settled=true;clearTimeout(timer);try{ws?.close()}catch{};resolve({ok:Boolean(connected||subscribed||pubs),connected:opened,authenticated:connected,subscribed,channel,protocol_ws_url:activeUrl,attempted_urls:protocolUrls,publications:pubs,event_types:[...new Set(events)].slice(0,30),latest_round_id:latestRoundId,latest_coefficient:latestCoefficient,latest_next_coefficient:latestNextCoefficient,latest_hash:latestHash,latest_seed:latestSeed,latest_nonce:latestNonce,latest_multiplier:latestMultiplier,latest_result:latestResult,connect_sub_channels:connectSubs,protocol_error:protocolError,connect_error:connectError,subscribe_error:subscribeError,token_claims_summary:tokenClaims,latency_ms:Date.now()-started,...extra})};
+      const finish=(extra={})=>{if(settled)return;settled=true;clearTimeout(timer);try{ws?.close()}catch{};resolve({ok:Boolean(connected||subscribed||pubs),connected:opened,authenticated:connected,subscribed,channel,protocol_ws_url:activeUrl,attempted_urls:protocolUrls,dns_summary:dnsSummary,publications:pubs,event_types:[...new Set(events)].slice(0,30),latest_round_id:latestRoundId,latest_coefficient:latestCoefficient,latest_next_coefficient:latestNextCoefficient,latest_hash:latestHash,latest_seed:latestSeed,latest_nonce:latestNonce,latest_multiplier:latestMultiplier,latest_result:latestResult,connect_sub_channels:connectSubs,protocol_error:protocolError,connect_error:connectError,subscribe_error:subscribeError,token_claims_summary:tokenClaims,latency_ms:Date.now()-started,...extra})};
       const timeoutMessage=()=>connected?"Подключение и авторизация Centrifugo подтверждены.":"WebSocket открылся, но авторизация Centrifugo не подтверждена. Теперь диагностируется точный ответ Centrifugo.";
       const send=(obj)=>{try{ws?.send(JSON.stringify(obj))}catch{}};
       const handle=(msg)=>{
@@ -253,8 +262,8 @@ const server=http.createServer(async(req,res)=>{
           const text=Buffer.isBuffer(raw)?raw.toString("utf8"):String(raw);
           for(const line of text.split("\n")){if(!line.trim())continue;try{handle(JSON.parse(line))}catch{events.push("unparsed_frame")}}
         });
-        ws.once("error",e=>{events.push("ws_error");try{ws.close()}catch{};attempt()});
-        ws.once("close",(code)=>{if(!settled&&!connected){events.push("closed_"+code);attempt()}});
+        ws.once("error",e=>{events.push("ws_error");if(!settled){protocolError={code:null,message:String(e.message||e),type:"websocket_error"};}try{ws.close()}catch{};attempt()});
+        ws.once("close",(code,reason)=>{if(!settled&&!connected){events.push("closed_"+code);if(!protocolError)protocolError={code, message:Buffer.isBuffer(reason)?reason.toString("utf8"):String(reason||""),type:"websocket_close"};attempt()}});
       };
       timer=setTimeout(()=>finish({error:"centrifugo_auth_timeout",message:timeoutMessage()}),10000);
       attempt();
