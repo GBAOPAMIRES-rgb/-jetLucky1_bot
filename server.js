@@ -827,7 +827,7 @@ async function probeLuckyJetSocketClientConstructionAtStartup(){
       while((p=d.indexOf(term,p))>=0&&n<3){
         const snippet=d.slice(Math.max(0,p-900),Math.min(d.length,p+1800))
           .replace(/[A-Za-z0-9_-]{40,}/g,"<redacted-long>")
-          .replace(/(ssid|token|authorization|cookie)(\\s*[:=]\\s*)([^,}\\s]+)/gi,"$1$2<redacted>");
+          .replace(/(ssid|token|authorization|cookie)[^,}\\s]*/gi,"<redacted>");
         hits.push({term,snippet});
         p+=term.length;n++;
       }
