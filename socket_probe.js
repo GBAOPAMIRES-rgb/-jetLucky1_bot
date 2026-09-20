@@ -17,7 +17,7 @@ async function attempt(name, base, ssid){
     const timer=setTimeout(()=>finish({connected:false,authenticated:false,reason:"timeout"}),10000);
     const opts={
       path:"/v4/socket.io",
-      transports:["websocket"],
+      transports:["polling","websocket"],
       forceNew:true,
       reconnection:false,
       timeout:9000,
