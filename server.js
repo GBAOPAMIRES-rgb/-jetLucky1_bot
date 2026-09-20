@@ -125,13 +125,20 @@ const server=http.createServer(async(req,res)=>{
   const started=Date.now();
   try{
     const result=await new Promise(resolve=>{
-      let settled=false;
+      let settled=false,opened=false,messages=0,firstMessage=null;
       const finish=(data)=>{if(settled)return;settled=true;try{ws.close()}catch{};resolve(data)};
       const ws=new WebSocket(LUCKYJET_WS_URL,{handshakeTimeout:7000});
-      const timer=setTimeout(()=>finish({ok:false,error:"gateway_timeout"}),8000);
-      ws.once("open",()=>{clearTimeout(timer);finish({ok:true,connected:true,url:LUCKYJET_WS_URL,latency_ms:Date.now()-started,message:"WebSocket-шлюз принимает соединение. Авторизация/подписка ещё не выполнялись."})});
-      ws.once("error",e=>{clearTimeout(timer);finish({ok:false,connected:false,url:LUCKYJET_WS_URL,latency_ms:Date.now()-started,error:"gateway_connection_failed",message:String(e.message||e)})});
-      ws.once("close",(code)=>{clearTimeout(timer);finish({ok:false,connected:false,url:LUCKYJET_WS_URL,close_code:code,error:"gateway_closed_before_open"})});
+      const timer=setTimeout(()=>finish({ok:opened,connected:opened,url:LUCKYJET_WS_URL,latency_ms:Date.now()-started,messages,first_message:firstMessage,message:opened?"WebSocket-шлюз принимает соединение. Авторизация/подписка не выполнялись; полученные кадры только диагностируются.":"Шлюз не открыл WebSocket-соединение."}),8000);
+      ws.once("open",()=>{opened=true});
+      ws.on("message",data=>{
+        messages++;
+        if(firstMessage===null){
+          const s=Buffer.isBuffer(data)?data.toString("utf8"):String(data);
+          firstMessage=s.slice(0,2000);
+        }
+      });
+      ws.once("error",e=>{clearTimeout(timer);finish({ok:false,connected:false,url:LUCKYJET_WS_URL,latency_ms:Date.now()-started,messages,first_message:firstMessage,error:"gateway_connection_failed",message:String(e.message||e)})});
+      ws.once("close",(code)=>{if(!settled){clearTimeout(timer);finish({ok:false,connected:opened,url:LUCKYJET_WS_URL,close_code:code,messages,first_message:firstMessage,error:opened?"gateway_closed":"gateway_closed_before_open"})}});
     });
     return json(res,200,result);
   }catch(e){return json(res,200,{ok:false,connected:false,error:"gateway_test_failed",message:String(e.message||e)})}
