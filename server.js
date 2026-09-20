@@ -436,7 +436,7 @@ async function probeLuckyJetProtocolAtStartup(){
     return;
   }
 
-  const inferred=LUCKYJET_WS_URL.replace(/\\/websocket\\/lifecycle\\/?$/,"/connection/websocket");
+  const inferred=LUCKYJET_WS_URL.replace(/\/websocket\/lifecycle\/?$/,"/connection/websocket");
   const urls=[...new Set([LUCKYJET_CENTRIFUGO_WS_URL||null,LUCKYJET_WS_URL,inferred].filter(Boolean))];
   const origins=["","https://1wmljx.life"];
 
