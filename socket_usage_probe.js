@@ -26,7 +26,7 @@ async function run(){
       try{
         const r=await get(url),js=r.text;
         if(js.includes("socket-io-adapter-DSFgpOt0")){
-          const terms=["socket-io-adapter-DSFgpOt0","new S(","new h(","accessToken","Authorization","customer-id","session-id","ssid","token:"];
+          const terms=["function M(","M=()=>","M=()=>({","localStorage.getItem","sessionStorage.getItem","document.cookie","customerId","customer-id","sessionId","session-id","accessToken","Authorization","ssid","SS_ID","token","socket-io-adapter-DSFgpOt0","new S("];
           const hits=[];
           for(const term of terms){
             let p=0,n=0;
@@ -35,7 +35,7 @@ async function run(){
               p+=term.length;n++;
             }
           }
-          matches.push({url,http_status:r.status,bytes:js.length,hits:hits.slice(0,16)});
+          matches.push({url,http_status:r.status,bytes:js.length,hits:hits.slice(0,28)});
         }
       }catch{}
     }
