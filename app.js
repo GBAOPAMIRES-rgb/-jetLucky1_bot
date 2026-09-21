@@ -272,6 +272,24 @@ async function luckyJetBrowserProbe(){
         query:{Language:"en",xorigin:location.host,app:"frontend"},
         timeout:10000
       });
+      // Read-only transport diagnostics: report the actual Socket.IO engine stage
+      // without reading or transmitting cookies, tokens, headers, or session secrets.
+      try{
+        const engine=socket.io?.engine;
+        const reportEngine=(label,extra)=>{
+          const transport=engine?.transport?.name||"unknown";
+          const detail=(extra&&String(extra).slice(0,120))||"";
+          const msg="stage="+label+" transport="+transport+(detail?" detail="+detail:"");
+          out.textContent="ℹ️ "+msg;
+          reportState?.("client_error",msg);
+        };
+        if(engine){
+          engine.on("upgrade",t=>reportEngine("upgrade",t?.name||""));
+          engine.on("upgradeError",e=>reportEngine("upgrade_error",e?.message||""));
+          engine.on("error",e=>reportEngine("engine_error",e?.message||""));
+          engine.on("close",r=>reportEngine("engine_close",r||""));
+        }
+      }catch{}
       btn.disabled=false; btn.textContent="⏹️ Остановить браузерный поток";
 
       const reportState=async(state,message)=>{
