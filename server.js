@@ -911,7 +911,7 @@ async function probeLuckyJetOfficialHeadersAtStartup(){
         const rr=await fetch(url,{headers:{Accept:"*/*",Origin:"https://1wmljx.life",Referer:page,"User-Agent":"Mozilla/5.0"}});
         const d=await rr.text();
         if(url.endsWith("/main-CYh8X1YZ.js")){          const deps=[...d.matchAll(/["']([^"']+\.js)["']/g)].map(m=>m[1]);
-          const candidates=[...new Set(deps)].filter(x=>x.includes("socket-io-adapter")||x.includes("server")||x.includes("updates"));
+          const candidates=[...new Set(deps)];
           for(const name of candidates.slice(0,20)){
             const asset=new URL("/resources/v1/app/assets/"+name,page).toString();
             try{
