@@ -180,9 +180,9 @@ async function adminScreen(type){
     };
     const status=await api("/api/luckyjet-browser-status");
     const bs=status?.state||null;
-    setStage(2,bs?.state==="connect"||bs?.state==="connect_error"||bs?.state==="disconnect"?"ПРОВЕРЕНА":"НЕТ ДАННЫХ");
-    setStage(3,bs?.state==="connect"?"ДОСТУПНА":bs?.state==="connect_error"?"НЕТ":"НЕТ ДАННЫХ");
-    setStage(4,bs?.state==="connect"?"УСТАНОВЛЕН":"НЕТ");
+    setStage(2,"НЕТ — Mini App не 1wmljx.life");
+    setStage(3,bs?.state==="connect"?"ДОСТУПНА":bs?.state==="connect_error"?"НЕТ — ошибка подключения": "НЕДОСТУПНА");
+    setStage(4,bs?.state==="connect"?"УСТАНОВЛЕН":bs?.state==="connect_error"?"ОТКЛОНЁН":"НЕТ ДАННЫХ");
     if(status?.has_event){
       setStage(5,"ПОЛУЧЕНО");
       setStage(6,typeof status.latest_coefficient==="number"?String(status.latest_coefficient)+"x":"НЕТ");
@@ -190,7 +190,7 @@ async function adminScreen(type){
     }else{
       setStage(5,"НЕТ");
       setStage(6,"НЕТ");
-      msg.textContent=bs?.message?("⚠️ Browser bridge: "+bs.message):"ℹ️ Свежего реального события нет. Коэффициент не генерируется и не подставляется.";
+      msg.textContent=bs?.message?("⚠️ Browser bridge: "+bs.message):"ℹ️ Свежего реального события нет. Для получения реального события нужен официальный браузерный контекст 1wmljx.life; коэффициент не генерируется и не подставляется.";
     }
     const bridgeBtn=document.createElement("button");
     bridgeBtn.className="secondary-btn";
@@ -248,7 +248,7 @@ async function luckyJetBrowserProbe(){
   out.className="signal-state"; out.style.whiteSpace="pre-line";
   const host=$("screen"); if(!host)return;
   const box=document.createElement("div"); box.className="support-card";
-  box.innerHTML="<b>Read-only browser bridge</b><br><small>Используется только текущая браузерная сессия. SSID, cookies и токены не читаются и не отправляются.</small>";
+  box.innerHTML="<b>Браузерный bridge Lucky Jet</b><br><small>Этот Mini App работает на jetlucky1.onrender.com. Официальный Lucky Jet работает в контексте 1wmljx.life. Поэтому bridge не пытается подключаться к официальному Socket.IO из Render-контекста и не читает SSID, cookies или токены.</small>";
   const btn=document.createElement("button"); btn.className="secondary-btn"; btn.textContent="📡 Подключить браузерный поток Lucky Jet";
   box.appendChild(btn); box.appendChild(out); host.querySelector(".screen-body")?.appendChild(box);
 
@@ -267,7 +267,7 @@ async function luckyJetBrowserProbe(){
         });
       }
       if(location.hostname!=="1wmljx.life"){
-        out.textContent="⚠️ Браузерный bridge запущен внутри "+location.hostname+". Официальный Lucky Jet требует контекст 1wmljx.life; авторизация/SSID/cookies не передаются. Прямое подключение остановлено.";
+        out.textContent="ℹ️ Текущий Mini App открыт на "+location.hostname+". Это не официальный контекст 1wmljx.life, поэтому прямое подключение остановлено. Авторизация, SSID и cookies не передаются.";
         try{await api("/api/luckyjet-browser-state",{method:"POST",body:JSON.stringify({state:"connect_error",message:"wrong_browser_origin"})});}catch{}
         btn.disabled=false;
         return;
