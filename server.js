@@ -394,6 +394,26 @@ const server=http.createServer(async(req,res)=>{
    return json(res,200,{ok:false,configured:true,source:"parse_luckyjet",error:"source_request_failed",message:String(e.message||e)});
   }
  }
+ if(url.pathname==="/api/luckyjet-browser-event"&&req.method==="POST"){
+  const r=validateInitData(req.headers["x-telegram-init-data"]||"");
+  if(!r.ok)return json(res,401,{ok:false,error:r.error});
+  if(!OWNER_IDS.includes(String(r.user.id)))return json(res,403,{ok:false,error:"owner_only"});
+  let body={};try{body=await readJson(req)}catch{return json(res,400,{ok:false,error:"invalid_json"})}
+  const coefficient=Number(body.coefficient);
+  if(!Number.isFinite(coefficient)||coefficient<1||coefficient>100000)return json(res,400,{ok:false,error:"invalid_coefficient"});
+  const event=String(body.event||"").slice(0,120);
+  const receivedAt=new Date().toISOString();
+  globalThis.luckyJetBrowserLastEvent={coefficient,event,receivedAt,source:"browser_socketio_read_only"};
+  console.log("Lucky Jet browser bridge event",JSON.stringify({coefficient,event,receivedAt,source:"browser_socketio_read_only"}));
+  return json(res,200,{ok:true,accepted:true,coefficient,event,received_at:receivedAt,source:"browser_socketio_read_only"});
+ }
+ if(url.pathname==="/api/luckyjet-browser-status"&&req.method==="GET"){
+  const r=validateInitData(req.headers["x-telegram-init-data"]||"");
+  if(!r.ok)return json(res,401,{ok:false,error:r.error});
+  if(!OWNER_IDS.includes(String(r.user.id)))return json(res,403,{ok:false,error:"owner_only"});
+  const e=globalThis.luckyJetBrowserLastEvent||null;
+  return json(res,200,{ok:true,connected:Boolean(e),latest_coefficient:e?.coefficient??null,event:e?.event??null,received_at:e?.receivedAt??null,source:e?.source??null});
+ }
  if(url.pathname==="/api/signal"&&req.method==="GET"){
   const r=validateInitData(req.headers["x-telegram-init-data"]||"");
   if(!r.ok)return json(res,401,{ok:false,error:r.error});
