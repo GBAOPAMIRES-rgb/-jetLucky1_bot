@@ -161,7 +161,7 @@ async function adminScreen(type){
   }
   if(type==="diag"){
     const r=await api("/api/bot/status");
-    setScreen("Диагностика",center("🩺 Диагностика","Проверяем только read-only источник. Секреты не читаются и не передаются.",
+    setScreen("Диагностика",center("🩺 Диагностика","Read-only проверка реального источника Lucky Jet.",
       '<div class="data-stack" id="luckyJetStages">'+
       '<div class="data-row"><span>1. Telegram WebApp</span><b>'+(tg?.initData?"OK":"НЕТ")+'</b></div>'+
       '<div class="data-row"><span>2. Официальная страница</span><b>ПРОВЕРЯЕМ</b></div>'+
@@ -202,6 +202,8 @@ async function adminScreen(type){
     readonlyBtn.onclick=()=>adminScreen("diag");
     const body=$("screen").querySelector(".screen-body");
     if(body){body.appendChild(bridgeBtn);body.appendChild(readonlyBtn);}
+    const analyticsDiag=$("openDiagFromAnalytics");
+    if(analyticsDiag)analyticsDiag.onclick=()=>adminScreen("diag");
     return;
   }
   if(type==="logs"){setScreen("Логи",center("📋 Логи","Безопасный статус без секретов.",'<div class="admin-status">Источник: <b>Render</b><br><br>Секреты и токены в Mini App не показываются.</div>'));return}
@@ -228,7 +230,7 @@ function gate(){
 
 function navigate(section){
   if(section==="more"){currentSection="more";moreScreen();renderNav();return}
-  if(section==="home"){currentSection="analytics";setScreen("Аналитика",center("📊 Аналитика","Статистика системы.",'<div class="metrics-grid">'+metric("СИСТЕМА","ONLINE","Mini App")+metric("СИГНАЛЫ","—","нет неподтверждённых данных")+metric("РЕЖИМ","READ-ONLY","активен")+'</div>'))}
+  if(section==="home"){currentSection="analytics";setScreen("Аналитика",center("📊 Аналитика","Статистика системы.",'<div class="metrics-grid">'+metric("СИСТЕМА","ONLINE","Mini App")+metric("ИСТОЧНИК","НЕТ","реальное событие не получено")+metric("РЕЖИМ","READ-ONLY","без ставок и генерации")+'</div><div class="support-card" style="margin-top:10px"><b>Браузерный источник Lucky Jet</b><p class="muted">Mini App: jetlucky1.onrender.com</p><p class="muted">Официальный контекст: 1wmljx.life</p><p class="muted">Прямое подключение из Mini App остановлено. SSID, cookies и авторизация не передаются.</p><button class="secondary-btn" id="openDiagFromAnalytics">🩺 Открыть полную диагностику</button></div>'))}
   else if(section==="signals"){currentSection="signals";signalScreen()}
   else if(section==="profile"){currentSection="profile";profileScreen()}
   else if(section==="support"){currentSection="support";supportScreen()}
@@ -236,7 +238,7 @@ function navigate(section){
   else if(["analytics","users","access","bot","diag","logs","owner"].includes(section)){
     if(role!=="owner")return;
     currentSection=section;
-    if(section==="analytics")setScreen("Аналитика",center("📊 Аналитика","Статистика системы.",'<div class="metrics-grid">'+metric("СИСТЕМА","ONLINE","Mini App")+metric("СИГНАЛЫ","—","нет неподтверждённых данных")+metric("РЕЖИМ","READ-ONLY","активен")+'</div>'));
+    if(section==="analytics")setScreen("Аналитика",center("📊 Аналитика","Статистика системы.",'<div class="metrics-grid">'+metric("СИСТЕМА","ONLINE","Mini App")+metric("ИСТОЧНИК","НЕТ","реальное событие не получено")+metric("РЕЖИМ","READ-ONLY","без ставок и генерации")+'</div><div class="support-card" style="margin-top:10px"><b>Браузерный источник Lucky Jet</b><p class="muted">Mini App: jetlucky1.onrender.com</p><p class="muted">Официальный контекст: 1wmljx.life</p><p class="muted">Прямое подключение из Mini App остановлено. SSID, cookies и авторизация не передаются.</p><button class="secondary-btn" id="openDiagFromAnalytics">🩺 Открыть полную диагностику</button></div>'));
     else adminScreen(section);
   }
   renderNav();
@@ -370,7 +372,7 @@ async function init(){
     $("roundNav").classList.remove("hidden");
     renderNav();
     currentSection="analytics";
-    setScreen("Аналитика",center("📊 Аналитика","Статистика системы.",'<div class="metrics-grid">'+metric("СИСТЕМА","ONLINE","Mini App")+metric("СИГНАЛЫ","—","нет неподтверждённых данных")+metric("РЕЖИМ","READ-ONLY","активен")+'</div>'));
+    setScreen("Аналитика",center("📊 Аналитика","Статистика системы.",'<div class="metrics-grid">'+metric("СИСТЕМА","ONLINE","Mini App")+metric("ИСТОЧНИК","НЕТ","реальное событие не получено")+metric("РЕЖИМ","READ-ONLY","без ставок и генерации")+'</div><div class="support-card" style="margin-top:10px"><b>Браузерный источник Lucky Jet</b><p class="muted">Mini App: jetlucky1.onrender.com</p><p class="muted">Официальный контекст: 1wmljx.life</p><p class="muted">Прямое подключение из Mini App остановлено. SSID, cookies и авторизация не передаются.</p><button class="secondary-btn" id="openDiagFromAnalytics">🩺 Открыть полную диагностику</button></div>'));
     renderNav();
     luckyJetBrowserProbe();
   }else{
