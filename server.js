@@ -1048,4 +1048,7 @@ async function probeLuckyJetOfficialHeadersAtStartup(){
     }));
   }
 }
-server.listen(PORT,()=>{console.log("jetLucky1 server listening on "+PORT+" owners="+OWNER_IDS.length);configureTelegram();probeLuckyJetParseSourceAtStartup();if(String(process.env.LUCKYJET_AUTH_BUILDER_ONLY||"") === "1"){console.log("Lucky Jet auth-builder-only diagnostics: ENABLED");probeLuckyJetOfficialHeadersAtStartup();}else if(String(process.env.LUCKYJET_DIAGNOSTICS||"") === "1"){console.log("Lucky Jet diagnostics: ENABLED");probeLuckyJetGatewayAtStartup();probeLuckyJetHistoryAtStartup();probeLuckyJetStateAtStartup();probeLuckyJetPageHostsAtStartup();probeLuckyJetHttpAuthAtStartup();probeLuckyJetMainAuthCodeAtStartup();probeLuckyJetClientBundleAtStartup();probeLuckyJetProtocolAtStartup();probeLuckyJetUserTokenAtStartup();probeLuckyJetLoggerAuthHelperAtStartup();probeLuckyJetAuthCookieNamesAtStartup();probeLuckyJetSocketClientConstructionAtStartup();}else{console.log("Lucky Jet diagnostics: disabled (set LUCKYJET_DIAGNOSTICS=1 to run read-only probes)");}});
+server.listen(PORT,async()=>{
+  console.log("jetLucky1 server listening on "+PORT+" (read-only source mode)");
+  await configureTelegram();
+});
