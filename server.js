@@ -298,7 +298,16 @@ if(url.pathname==="/telegram/webhook"){
  }
  if(req.method!=="GET")return json(res,405,{ok:false,error:"method_not_allowed"});return serveStatic(req,res);
 });
+async function runParseStartupCheck(){
+  const p=await fetchParseLuckyJetHistory();
+  if(p.ok&&p.rounds?.length){
+    console.log("Lucky Jet Parse read-only check OK "+JSON.stringify({source:p.source,count:p.rounds.length,latest_coefficient:p.rounds[0].coefficient,fetched_at:p.fetched_at}));
+  }else{
+    console.log("Lucky Jet Parse read-only check FAILED "+JSON.stringify({error:p.error||"unknown",message:p.message||null,configured:Boolean(PARSE_API_KEY)}));
+  }
+}
 server.listen(PORT,async()=>{
   console.log("jetLucky1 server listening on "+PORT+" (read-only source mode)");
   await configureTelegram();
+  await runParseStartupCheck();
 });
