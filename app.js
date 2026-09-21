@@ -192,12 +192,6 @@ async function adminScreen(type){
       const d=details[btn.dataset.diag];
       detail.innerHTML="<b>"+escapeHtml(d[0])+"</b><p class='diag-value'>"+escapeHtml(d[1])+"</p><p class='muted'>"+escapeHtml(d[2])+"</p>";
     });
-    const readonlyBtn=document.createElement("button");
-    readonlyBtn.className="primary-btn";
-    readonlyBtn.textContent="🔄 Проверить ещё раз";
-    readonlyBtn.onclick=()=>adminScreen("diag");
-    const body=$("screen").querySelector(".screen-body");
-    if(body)body.appendChild(readonlyBtn);
     return;
   }
   if(type==="logs"){setScreen("Логи",center("📋 Логи","Безопасный статус без секретов.",'<div class="admin-status">Источник: <b>Render</b><br><br>Секреты и токены в Mini App не показываются.</div>'));return}
