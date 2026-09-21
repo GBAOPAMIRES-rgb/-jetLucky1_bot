@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Lucky Jet — Read-only Bridge</title>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;background:#0b1020;color:#fff;margin:0;padding:20px}
+.card{max-width:720px;margin:auto;background:#151c31;border-radius:18px;padding:20px}
+h1{font-size:24px}.muted{color:#aeb8d0;line-height:1.5}
+button,a{display:block;width:100%;box-sizing:border-box;margin:12px 0;padding:14px;border:0;border-radius:12px;text-align:center;text-decoration:none;font-size:16px;font-weight:700}
+button{background:#38bdf8;color:#07111d}.secondary{background:#26314d;color:#fff}
+textarea{width:100%;height:180px;box-sizing:border-box;background:#080d19;color:#dbeafe;border:1px solid #33415f;border-radius:12px;padding:12px;font-size:12px}
+.ok{color:#6ee7b7}.warn{color:#fbbf24}.small{font-size:13px}
+</style>
+</head>
+<body>
+<div class="card">
+<h1>🚀 Lucky Jet Read-only Bridge</h1>
+<p class="muted">Этот режим не делает ставки и не читает SSID, cookies или пароли. Короткий токен используется только для передачи подтверждённых событий из официального сайта в наш сервер.</p>
+<div id="status" class="muted">Получаем временный bridge-токен…</div>
+<a id="openOfficial" class="secondary" href="https://1wmljx.life/" target="_blank" rel="noopener">🌐 Открыть официальный Lucky Jet</a>
+<button id="copy">📋 Скопировать команду Bridge</button>
+<textarea id="code" readonly placeholder="Команда появится после авторизации Owner."></textarea>
+<p class="small muted">На официальной странице создайте закладку Safari/Chrome, вставьте туда эту команду как адрес закладки, затем откройте закладку уже на странице 1wmljx.life. Оставьте страницу открытой, пока идёт поток.</p>
+</div>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script>
+(async()=>{
+ const status=document.getElementById("status"),codeBox=document.getElementById("code"),copy=document.getElementById("copy");
+ const tg=window.Telegram?.WebApp; try{tg?.ready();tg?.expand()}catch{}
+ const initData=tg?.initData||"";
+ if(!initData){status.textContent="❌ Откройте эту страницу внутри Owner Mini App.";return}
+ try{
+  const r=await fetch("/api/luckyjet-bridge-token",{headers:{"X-Telegram-Init-Data":initData}});
+  const d=await r.json();
+  if(!r.ok||!d.ok)throw new Error(d.message||d.error||"bridge_token_error");
+  const token=d.token;
+  const endpoint=location.origin+"/api/luckyjet-browser-event-bridge";
+  const stateEndpoint=location.origin+"/api/luckyjet-browser-state-bridge";
+  const bookmarklet="javascript:(()=>{const T="+JSON.stringify(token)+",E="+JSON.stringify(endpoint)+",S="+JSON.stringify(stateEndpoint)+";const send=(u,b)=>fetch(u,{method:'POST',headers:{'Content-Type':'application/json','X-LuckyJet-Bridge-Token':T},body:JSON.stringify(b)}).catch(()=>{});if(!location.hostname.endsWith('1wmljx.life')){alert('Откройте официальный Lucky Jet 1wmljx.life и запустите закладку там.');return}const start=()=>{if(!window.io){const s=document.createElement('script');s.src='https://cdn.socket.io/4.8.1/socket.io.min.js';s.onload=connect;s.onerror=()=>alert('Не удалось загрузить Socket.IO');document.head.appendChild(s)}else connect()};const connect=()=>{const q={Language:'en',xorigin:location.host,app:'frontend'};const so=io('https://crash-gateway-grm-cr.gamedev-tech.cc',{path:'/v4/socket.io',transports:['polling','websocket'],forceNew:true,reconnection:true,reconnectionAttempts:Infinity,reconnectionDelay:1000,withCredentials:true,query:q,timeout:10000});window.__LuckyJetReadOnlySocket=so;so.on('connect',()=>{send(S,{state:'connect',message:'Socket.IO connected from official browser origin'});alert('✅ Read-only bridge подключён. Оставьте страницу открытой.')});so.on('connect_error',e=>send(S,{state:'connect_error',message:String(e?.message||'connect_error').slice(0,180)}));so.on('disconnect',r=>send(S,{state:'disconnect',message:String(r||'disconnect').slice(0,180)}));so.onAny((ev,data)=>{let v=null;const raw=typeof data==='string'?data:JSON.stringify(data||{});try{const walk=x=>{if(x&&typeof x==='object')for(const [k,z] of Object.entries(x)){if(v===null&&/multiplier|coefficient|coef|factor|rate/i.test(k)&&Number.isFinite(Number(z)))v=Number(z);else walk(z)}};walk(typeof data==='string'?JSON.parse(data):data)}catch{}if(v===null){const m=raw.match(/([0-9]+(?:\\.[0-9]+)?)x/i);if(m)v=Number(m[1])}if(Number.isFinite(v)&&v>=1&&v<=100000)send(E,{coefficient:v,event:String(ev).slice(0,120)})})};start()})()";
+  codeBox.value=bookmarklet;
+  status.innerHTML="<span class='ok'>✅ Временный bridge-токен получен.</span><br>Действует до "+new Date(d.expires_at).toLocaleTimeString()+"; после этого создайте новый.";
+  copy.onclick=async()=>{try{await navigator.clipboard.writeText(codeBox.value);status.innerHTML="<span class='ok'>✅ Команда скопирована.</span> Теперь используйте её как адрес закладки на 1wmljx.life."}catch{codeBox.select();document.execCommand('copy');status.innerHTML="<span class='ok'>✅ Команда выделена/скопирована.</span>"}};
+ }catch(e){status.textContent="❌ "+e.message}
+})();
+</script>
+</body>
+</html>
