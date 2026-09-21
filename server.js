@@ -903,7 +903,7 @@ async function probeLuckyJetOfficialHeadersAtStartup(){
     for(const m of html.matchAll(/<script[^>]+src=["']([^"']+.js(?:[?#][^"']*)?)["']/gi)){
       try{scripts.push(new URL(m[1],page).toString())}catch{}
     }
-    scripts.push(entry);
+    scripts.push(entry);\n    scripts.push("https://1wmljx.life/resources/v1/app/assets/socket-io-adapter-DSFgpOt0.js");
     const unique=[...new Set(scripts)].slice(0,20);
     for(const url of unique){
       try{
