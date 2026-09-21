@@ -837,31 +837,7 @@ async function probeLuckyJetSocketClientConstructionAtStartup(){
   }
 }
 
-async function probeLuckyJetUserAuthModuleAtStartup(){
-  const urls=[
-    "https://1wmljx.life/resources/v1/app/assets/main-CYh8X1YZ.js",
-    "https://1wmljx.life/resources/v1/app/assets/index-DC5CRJN_.js",
-    "https://1wmljx.life/resources/v1/app/assets/index-DHYvYOwF.js"
-  ];
-  const terms=["/user/auth","/user/token","authorization:","Authorization:","authorization","accessToken","authToken","SS_ID","sessionId","customerId","isAuthed","openAuth"];
-  Promise.all(urls.map(url=>fetch(url,{headers:{Accept:"*/*",Origin:"https://1wmljx.life",Referer:"https://1wmljx.life/","User-Agent":"Mozilla/5.0"}).then(async r=>({url,status:r.status,text:await r.text()})).catch(e=>({url,status:0,text:"",error:String(e.message||e)})))).then(rows=>{
-    const out=rows.map(row=>{
-      const hits=[];
-      for(const term of terms){
-        let p=0,n=0;
-        while((p=row.text.indexOf(term,p))>=0&&n<3){
-          let snippet=row.text.slice(Math.max(0,p-500),Math.min(row.text.length,p+1200));
-          snippet=snippet.replace(/[A-Za-z0-9_-]{40,}/g,"<redacted-long>");
-          snippet=snippet.replace(/(Bearer\\s+)[^\\s"'<>]+/gi,"$1<redacted>");
-          hits.push({term,index:p,snippet});p+=term.length;n++;
-        }
-      }
-      return {url:row.url,status:row.status,bytes:row.text.length,hits};
-    });
-    console.log("Lucky Jet user-auth module probe",JSON.stringify(out));
-  }).catch(e=>console.log("Lucky Jet user-auth module probe",JSON.stringify({error:String(e.message||e)})));
-}
-function probeLuckyJetAuthCookieNamesAtStartup(){
+async function probeLuckyJetAuthCookieNamesAtStartup(){
   const urls=[
     "https://1wmljx.life/resources/v1/app/assets/logger-D8JkLHFH.js",
     "https://1wmljx.life/resources/v1/app/assets/plugin-server-updates-dVq29KWs.js"
@@ -906,4 +882,4 @@ function probeLuckyJetLoggerAuthHelperAtStartup(){
     });
   }).on("error",e=>console.log("Lucky Jet logger auth helper scan",JSON.stringify({status:0,error:String(e.message||e)})));
 }
-server.listen(PORT,()=>{console.log("jetLucky1 server listening on "+PORT+" owners="+OWNER_IDS.length);configureTelegram();probeLuckyJetParseSourceAtStartup();if(String(process.env.LUCKYJET_DIAGNOSTICS||"") === "1"){console.log("Lucky Jet diagnostics: ENABLED");probeLuckyJetGatewayAtStartup();probeLuckyJetHistoryAtStartup();probeLuckyJetStateAtStartup();probeLuckyJetPageHostsAtStartup();probeLuckyJetHttpAuthAtStartup();probeLuckyJetMainAuthCodeAtStartup();probeLuckyJetClientBundleAtStartup();probeLuckyJetProtocolAtStartup();probeLuckyJetUserTokenAtStartup();probeLuckyJetLoggerAuthHelperAtStartup();probeLuckyJetUserAuthModuleAtStartup();probeLuckyJetAuthCookieNamesAtStartup();probeLuckyJetSocketClientConstructionAtStartup();}else{console.log("Lucky Jet diagnostics: disabled (set LUCKYJET_DIAGNOSTICS=1 to run read-only probes)");}});
+server.listen(PORT,()=>{console.log("jetLucky1 server listening on "+PORT+" owners="+OWNER_IDS.length);configureTelegram();probeLuckyJetParseSourceAtStartup();if(String(process.env.LUCKYJET_DIAGNOSTICS||"") === "1"){console.log("Lucky Jet diagnostics: ENABLED");probeLuckyJetGatewayAtStartup();probeLuckyJetHistoryAtStartup();probeLuckyJetStateAtStartup();probeLuckyJetPageHostsAtStartup();probeLuckyJetHttpAuthAtStartup();probeLuckyJetMainAuthCodeAtStartup();probeLuckyJetClientBundleAtStartup();probeLuckyJetProtocolAtStartup();probeLuckyJetUserTokenAtStartup();probeLuckyJetLoggerAuthHelperAtStartup();probeLuckyJetAuthCookieNamesAtStartup();probeLuckyJetSocketClientConstructionAtStartup();}else{console.log("Lucky Jet diagnostics: disabled (set LUCKYJET_DIAGNOSTICS=1 to run read-only probes)");}});
