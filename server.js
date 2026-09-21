@@ -82,7 +82,7 @@ async function fetchParseLuckyJetHistory(){
  try{
   const r=await fetch(PARSE_LUCKYJET_URL,{headers:{"X-API-Key":PARSE_API_KEY,"Accept":"application/json"},signal:AbortSignal.timeout(8000)});
   const d=await r.json().catch(()=>null);
-  if(!r.ok)return {ok:false,error:"parse_http_"+r.status};
+  if(!r.ok){const apiError=String(d?.error?.code||d?.error?.message||d?.code||d?.message||"").replace(/[^a-zA-Z0-9_.:-]/g," ").slice(0,120);return {ok:false,error:"parse_http_"+r.status,api_error:apiError||null};}
   const rounds=Array.isArray(d?.data?.rounds)?d.data.rounds:Array.isArray(d?.rounds)?d.rounds:[];
   const clean=rounds.map(x=>({id:String(x.id||x.round_id||"").slice(0,120),coefficient:Number(x.coefficient??x.top_coefficient),hash:String(x.hash||"").slice(0,200),salt:String(x.salt||"").slice(0,200)})).filter(x=>x.id&&Number.isFinite(x.coefficient)&&x.coefficient>=1&&x.coefficient<=100000);
   if(!clean.length)return {ok:false,error:"parse_no_rounds"};
@@ -303,7 +303,7 @@ async function runParseStartupCheck(){
   if(p.ok&&p.rounds?.length){
     console.log("Lucky Jet Parse read-only check OK "+JSON.stringify({source:p.source,count:p.rounds.length,latest_coefficient:p.rounds[0].coefficient,fetched_at:p.fetched_at}));
   }else{
-    console.log("Lucky Jet Parse read-only check FAILED "+JSON.stringify({error:p.error||"unknown",message:p.message||null,configured:Boolean(PARSE_API_KEY)}));
+    console.log("Lucky Jet Parse read-only check FAILED "+JSON.stringify({error:p.error||"unknown",api_error:p.api_error||null,message:p.message||null,configured:Boolean(PARSE_API_KEY),key_format:PARSE_API_KEY.startsWith("pmx_")?"pmx":"other"}));
   }
 }
 server.listen(PORT,async()=>{
