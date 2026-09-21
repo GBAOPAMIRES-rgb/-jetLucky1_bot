@@ -906,6 +906,7 @@ async function probeLuckyJetOfficialHeadersAtStartup(){
     scripts.push(entry);
     scripts.push("https://1wmljx.life/resources/v1/app/assets/socket-io-adapter-DSFgpOt0.js");
     scripts.push("https://1wmljx.life/resources/v1/app/assets/logger-D8JkLHFH.js");
+    scripts.push("https://1wmljx.life/resources/v1/app/assets/plugin-server-updates-dVq29KWs.js");
     const unique=[...new Set(scripts)].slice(0,20);
     for(const url of unique){
       try{
