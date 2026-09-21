@@ -253,11 +253,6 @@ const server=http.createServer(async(req,res)=>{
   const hasEvent=Boolean(e);
   return json(res,200,{ok:true,connected,has_event:hasEvent,latest_coefficient:e?.coefficient??null,event:e?.event??null,received_at:e?.receivedAt??null,source:e?.source??null,state:s});
  }
- if(url.pathname==="/api/luckyjet-source-status"&&req.method==="GET"){
-  const r=validateInitData(req.headers["x-telegram-init-data"]||"");
-  if(!r.ok||!OWNER_IDS.includes(String(r.user.id)))return json(res,403,{ok:false,error:"owner_only"});
-  return json(res,200,{ok:true,parse_configured:Boolean(PARSE_API_KEY),source:"parse_luckyjet_read_only",official_api:false});
- }
  if(url.pathname==="/api/signal"&&req.method==="GET"){
   const r=validateInitData(req.headers["x-telegram-init-data"]||"");
   if(!r.ok)return json(res,401,{ok:false,error:r.error});
