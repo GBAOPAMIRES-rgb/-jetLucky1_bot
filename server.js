@@ -883,26 +883,60 @@ function probeLuckyJetLoggerAuthHelperAtStartup(){
   }).on("error",e=>console.log("Lucky Jet logger auth helper scan",JSON.stringify({status:0,error:String(e.message||e)})));
 }
 async function probeLuckyJetOfficialHeadersAtStartup(){
-  const url="https://1wmljx.life/resources/v1/app/assets/logger-D8JkLHFH.js";
+  const entry="https://1wmljx.life/resources/v1/app/assets/plugin-server-updates-dVq29KWs.js";
+  const targets=[entry];
+  const seen=new Set();
+  const interesting=[
+    "/v4/socket.io","socket.io","io(","new Manager","Manager(","withCredentials",
+    "transports","transportOptions","path:","path=","auth:","auth=","extraHeaders",
+    "websocket","WebSocket","customerId","sessionId","authorization","Authorization",
+    "X-Unique-Key","X-Origin"
+  ];
+  const clean=s=>String(s||"")
+    .replace(/[A-Za-z0-9_-]{40,}/g,"<redacted-long>")
+    .replace(/(Bearer\\s+)[^\\s"'<>]+/gi,"$1<redacted>")
+    .replace(/(cookie\\s*[:=]\\s*)[^,;}]+/gi,"$1<redacted>");
   try{
-    const rr=await fetch(url,{headers:{Accept:"*/*",Origin:"https://1wmljx.life",Referer:"https://1wmljx.life/","User-Agent":"Mozilla/5.0"}});
-    const d=await rr.text();
-    const terms=["al=({","al=()=>","al:","AR=()=>","IR=()=>","traceId","customerId","sessionId","SS_ID","ssid","accessToken","authToken"];
-    const hits=[];
-    for(const term of terms){
-      let p=0,n=0;
-      while((p=d.indexOf(term,p))>=0&&n<5){
-        let snippet=d.slice(Math.max(0,p-900),Math.min(d.length,p+1800));
-        snippet=snippet.replace(/[A-Za-z0-9_-]{40,}/g,"<redacted-long>");
-        snippet=snippet.replace(/(Bearer\\s+)[^\\s"'<>]+/gi,"$1<redacted>");
-        snippet=snippet.replace(/(cookie\\s*[:=]\\s*)[^,;}]+/gi,"$1<redacted>");
-        hits.push({term,index:p,snippet});
-        p+=term.length;n++;
+    while(targets.length && seen.size<8){
+      const url=targets.shift();
+      if(!url||seen.has(url))continue;
+      seen.add(url);
+      const rr=await fetch(url,{headers:{
+        Accept:"*/*",Origin:"https://1wmljx.life",
+        Referer:"https://1wmljx.life/", "User-Agent":"Mozilla/5.0"
+      }});
+      const d=await rr.text();
+      const linked=[];
+      for(const m of d.matchAll(/(?:from|import)\\s*["']([^"']+\\.js(?:[?#][^"']*)?)["']/g)){
+        try{
+          const u=new URL(m[1],url).toString();
+          if(u.includes("/resources/v1/app/assets/"))linked.push(u);
+        }catch{}
       }
+      for(const u of linked.slice(0,8))if(!seen.has(u)&&targets.length<8)targets.push(u);
+      const hits=[];
+      for(const term of interesting){
+        let p=0,n=0;
+        while((p=d.indexOf(term,p))>=0&&n<4){
+          hits.push({term,index:p,snippet:clean(d.slice(Math.max(0,p-700),Math.min(d.length,p+1500)))});
+          p+=term.length;n++;
+        }
+      }
+      console.log("Lucky Jet official Socket.IO client probe",JSON.stringify({
+        url,http_status:rr.status,bytes:d.length,
+        linked_asset_count:linked.length,
+        linked_assets:linked.slice(0,8),
+        hits:hits.slice(0,60)
+      }));
     }
-    console.log("Lucky Jet official headers probe",JSON.stringify({status:rr.status,bytes:d.length,hits:hits.slice(0,40)}));
+    console.log("Lucky Jet official Socket.IO client summary",JSON.stringify({
+      assets_checked:[...seen],
+      assets_queued:targets.length
+    }));
   }catch(e){
-    console.log("Lucky Jet official headers probe",JSON.stringify({ok:false,error:String(e.message||e)}));
+    console.log("Lucky Jet official Socket.IO client probe",JSON.stringify({
+      ok:false,error:String(e.message||e)
+    }));
   }
 }
 server.listen(PORT,()=>{console.log("jetLucky1 server listening on "+PORT+" owners="+OWNER_IDS.length);configureTelegram();probeLuckyJetParseSourceAtStartup();if(String(process.env.LUCKYJET_AUTH_BUILDER_ONLY||"") === "1"){console.log("Lucky Jet auth-builder-only diagnostics: ENABLED");probeLuckyJetOfficialHeadersAtStartup();}else if(String(process.env.LUCKYJET_DIAGNOSTICS||"") === "1"){console.log("Lucky Jet diagnostics: ENABLED");probeLuckyJetGatewayAtStartup();probeLuckyJetHistoryAtStartup();probeLuckyJetStateAtStartup();probeLuckyJetPageHostsAtStartup();probeLuckyJetHttpAuthAtStartup();probeLuckyJetMainAuthCodeAtStartup();probeLuckyJetClientBundleAtStartup();probeLuckyJetProtocolAtStartup();probeLuckyJetUserTokenAtStartup();probeLuckyJetLoggerAuthHelperAtStartup();probeLuckyJetAuthCookieNamesAtStartup();probeLuckyJetSocketClientConstructionAtStartup();}else{console.log("Lucky Jet diagnostics: disabled (set LUCKYJET_DIAGNOSTICS=1 to run read-only probes)");}});
