@@ -290,10 +290,10 @@ const server=http.createServer(async(req,res)=>{
   if(!token)return json(res,200,{ok:false,configured:false,error:"centrifugo_token_not_configured",message:"Токен Centrifugo не настроен на Render. Значение токена не запрашивается через Mini App."});
   const started=Date.now();
   const inferredCentrifugoUrl=LUCKYJET_WS_URL.replace(/\/websocket\/lifecycle\/?$/,"/connection/websocket");
-  console.log("Lucky Jet protocol test start",JSON.stringify({urls:[LUCKYJET_CENTRIFUGO_WS_URL||null,inferredCentrifugoUrl],channel,token_configured:Boolean(token),auth_modes:authCandidates.map(x=>x.name)}));
   const protocolUrls=[...new Set([LUCKYJET_CENTRIFUGO_WS_URL||null,inferredCentrifugoUrl].filter(Boolean))];
   const originCandidates=["","https://1wmljx.life"];
   const authCandidates=[{name:"json_connect",headers:{}},{name:"authorization_bearer",headers:{"Authorization":"Bearer "+token}},{name:"x_auth_token",headers:{"X-Auth-Token":token}},{name:"x_token",headers:{"X-Token":token}}];
+  console.log("Lucky Jet protocol test start",JSON.stringify({urls:protocolUrls,channel,token_configured:Boolean(token),auth_modes:authCandidates.map(x=>x.name)}));
   const protocolAttempts=protocolUrls.flatMap(u=>originCandidates.flatMap(origin=>authCandidates.map(auth=>({url:u,origin,auth:auth.name,headers:auth.headers}))));
   const dnsSummary=[];
   for(const candidate of protocolUrls){
