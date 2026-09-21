@@ -81,7 +81,7 @@ function signalScreen(){
     if(locked)return;
     b.disabled=true;coefficient.textContent="…";rocket.textContent="🚀";state.textContent="";
     const r=await api("/api/signal");
-    if(r.ok&&r.signal)coefficient.textContent=String(r.signal.multiplier)+"x";
+    if(r.ok&&r.signal){coefficient.textContent=String(r.signal.multiplier)+"x";state.textContent=r.source==="parse_luckyjet_read_only"?"Источник: подтверждённая история Lucky Jet (read-only).":r.source==="official_browser_bridge_read_only"?"Источник: официальный браузерный поток (read-only).":"Источник: "+String(r.source||"read-only");}else{coefficient.textContent="— —";state.textContent=r?.message||"Свежего подтверждённого коэффициента нет.";}
     else{coefficient.textContent="— —";state.textContent=r.message||"Нет подтверждённого источника Lucky Jet.";}
     b.disabled=false;
   };
@@ -90,7 +90,7 @@ function signalScreen(){
 async function historyScreen(){
   setScreen("История",center("📜 История","Здесь находятся только подтверждённые результаты.","<div id='historyBody' class='data-stack'><div class='loading'>Проверяем данные…</div></div>"));
   const r=await api("/api/history");
-  $("historyBody").innerHTML=r.ok&&r.history?.length?r.history.map(x=>'<div class="data-row"><span>'+escapeHtml(x.time)+'</span><b>'+escapeHtml(x.multiplier)+'x</b></div>').join(""):'<div class="empty-state">НЕТ ПОДТВЕРЖДЁННЫХ ДАННЫХ</div>';
+  $("historyBody").innerHTML=r.ok&&r.history?.length?((r.source_confirmed?'<div class="metrics-note"><b>Источник подтверждён</b><p class="muted">'+escapeHtml(r.source||"read-only")+'</p></div>':"")+r.history.map(x=>'<div class="data-row"><span>'+escapeHtml(x.time||"Последний подтверждённый раунд")+'</span><b>'+escapeHtml(x.multiplier)+'x</b></div>').join("")):'<div class="empty-state">НЕТ ПОДТВЕРЖДЁННЫХ ДАННЫХ</div>';
 }
 
 function homeScreen(){
