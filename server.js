@@ -13,6 +13,7 @@ const MINI_APP_URL=process.env.MINI_APP_URL||"https://jetlucky1.onrender.com";
 const WEBHOOK_URL=process.env.WEBHOOK_URL||"https://jetlucky1.onrender.com/telegram/webhook";
 const PARSE_API_KEY=String(process.env.PARSE_API_KEY||"").trim();
 const PARSE_LUCKYJET_URL=String(process.env.PARSE_LUCKYJET_URL||"https://api.parse.bot/scraper/2b7d091d-f8a1-483b-b734-63b3d8a81e53/get_round_history").trim();
+const PARSE_LUCKYJET_ALT_URL=String(process.env.PARSE_LUCKYJET_ALT_URL||"https://api.parse.bot/scraper/dfcd37a4-42ee-4914-824f-2651f659871d/get_rounds_history").trim();
 const ROOT=__dirname;
 let luckyJetBridgeToken={value:crypto.randomBytes(24).toString("hex"),expiresAt:0};
 function bridgeTokenValid(value){const v=String(value||"");if(!v||!luckyJetBridgeToken.value||Date.now()>luckyJetBridgeToken.expiresAt)return false;const a=Buffer.from(v),b=Buffer.from(luckyJetBridgeToken.value);return a.length===b.length&&crypto.timingSafeEqual(a,b)}
@@ -79,15 +80,29 @@ function validateInitData(initData){
 }
 async function fetchParseLuckyJetHistory(){
  if(!PARSE_API_KEY)return {ok:false,error:"parse_api_key_not_configured"};
- try{
-  const r=await fetch(PARSE_LUCKYJET_URL,{headers:{"X-API-Key":PARSE_API_KEY,"Accept":"application/json"},signal:AbortSignal.timeout(8000)});
-  const d=await r.json().catch(()=>null);
-  if(!r.ok){const apiError=String(d?.error?.code||d?.error?.message||d?.code||d?.message||"").replace(/[^a-zA-Z0-9_.:-]/g," ").slice(0,120);return {ok:false,error:"parse_http_"+r.status,api_error:apiError||null};}
-  const rounds=Array.isArray(d?.data?.rounds)?d.data.rounds:Array.isArray(d?.rounds)?d.rounds:[];
-  const clean=rounds.map(x=>({id:String(x.id||x.round_id||"").slice(0,120),coefficient:Number(x.coefficient??x.top_coefficient),hash:String(x.hash||"").slice(0,200),salt:String(x.salt||"").slice(0,200)})).filter(x=>x.id&&Number.isFinite(x.coefficient)&&x.coefficient>=1&&x.coefficient<=100000);
-  if(!clean.length)return {ok:false,error:"parse_no_rounds"};
-  return {ok:true,rounds:clean,source:"parse_luckyjet_read_only",fetched_at:new Date().toISOString()};
- }catch(e){return {ok:false,error:"parse_request_failed",message:String(e.message||e).slice(0,180)}}
+ const endpoints=[
+  {url:PARSE_LUCKYJET_URL,source:"parse_luckyjet_read_only"},
+  {url:PARSE_LUCKYJET_ALT_URL,source:"parse_1win_luckyjet_read_only"}
+ ].filter((x,i,a)=>x.url&&a.findIndex(y=>y.url===x.url)===i);
+ const failures=[];
+ for(const endpoint of endpoints){
+  try{
+   const r=await fetch(endpoint.url,{headers:{"X-API-Key":PARSE_API_KEY,"Accept":"application/json"},signal:AbortSignal.timeout(8000)});
+   const d=await r.json().catch(()=>null);
+   if(!r.ok){
+    const apiError=String(d?.error?.code||d?.error?.message||d?.code||d?.message||"").replace(/[^a-zA-Z0-9_.:-]/g," ").slice(0,120);
+    failures.push({source:endpoint.source,error:"parse_http_"+r.status,api_error:apiError||null});
+    continue;
+   }
+   const rounds=Array.isArray(d?.data?.rounds)?d.data.rounds:Array.isArray(d?.rounds)?d.rounds:[];
+   const clean=rounds.map(x=>({id:String(x.id||x.round_id||"").slice(0,120),coefficient:Number(x.coefficient??x.top_coefficient),hash:String(x.hash||"").slice(0,200),salt:String(x.salt||"").slice(0,200)})).filter(x=>x.id&&Number.isFinite(x.coefficient)&&x.coefficient>=1&&x.coefficient<=100000);
+   if(!clean.length){failures.push({source:endpoint.source,error:"parse_no_rounds"});continue;}
+   return {ok:true,rounds:clean,source:endpoint.source,fetched_at:new Date().toISOString()};
+  }catch(e){
+   failures.push({source:endpoint.source,error:"parse_request_failed",message:String(e.message||e).slice(0,180)});
+  }
+ }
+ return {ok:false,error:"parse_all_sources_failed",failures};
 }
 
 async function telegram(method,payload){
@@ -303,7 +318,7 @@ async function runParseStartupCheck(){
   if(p.ok&&p.rounds?.length){
     console.log("Lucky Jet Parse read-only check OK "+JSON.stringify({source:p.source,count:p.rounds.length,latest_coefficient:p.rounds[0].coefficient,fetched_at:p.fetched_at}));
   }else{
-    console.log("Lucky Jet Parse read-only check FAILED "+JSON.stringify({error:p.error||"unknown",api_error:p.api_error||null,message:p.message||null,configured:Boolean(PARSE_API_KEY),key_format:PARSE_API_KEY.startsWith("pmx_")?"pmx":"other"}));
+    console.log("Lucky Jet Parse read-only check FAILED "+JSON.stringify({error:p.error||"unknown",failures:p.failures||[],configured:Boolean(PARSE_API_KEY),key_format:PARSE_API_KEY.startsWith("pmx_")?"pmx":"other"}));
   }
 }
 server.listen(PORT,async()=>{
