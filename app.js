@@ -161,9 +161,9 @@ async function adminScreen(type){
   }
   if(type==="diag"){
     const r=await api("/api/bot/status");
-    setScreen("Диагностика",center("🩺 Диагностика","Безопасная проверка без секретов.",'<div class="data-stack">'+
-      '<div class="data-row"><span>Telegram WebApp</span><b>'+(tg?"OK":"НЕТ")+'</b></div><div class="data-row"><span>initData</span><b>'+(tg?.initData?"ПОЛУЧЕНА":"НЕТ")+'</b></div><div class="data-row"><span>Доступ</span><b>'+(hasAccess?"РАЗРЕШЁН":"ОГРАНИЧЕН")+'</b></div><div class="data-row"><span>Бот</span><b>'+(r.paused?"ПРИОСТАНОВЛЕН":"РАБОТАЕТ")+'</b></div></div><button class="primary-btn" id="checkLuckyJetSsid">🔎 Проверить Lucky Jet SSID</button><div id="luckyJetSsidMsg" class="signal-state"></div><button class="secondary-btn" id="checkLuckyJetGateway">🌐 Проверить WebSocket-шлюз</button><div id="luckyJetGatewayMsg" class="signal-state"></div><button class="secondary-btn" id="checkLuckyJetProtocol">📡 Проверить поток Lucky Jet</button><div id="luckyJetProtocolMsg" class="signal-state"></div>'));
-    $("checkLuckyJetGateway").onclick=async()=>{const b=$("checkLuckyJetGateway"),m=$("luckyJetGatewayMsg");b.disabled=true;m.textContent="Проверяем WebSocket-шлюз…";const rr=await api("/api/luckyjet-gateway-test");b.disabled=false;m.textContent=rr.ok&&rr.connected?"✅ WebSocket-шлюз принимает соединение.":"❌ Шлюз недоступен: "+(rr.message||rr.error||"неизвестная ошибка");};
+    setScreen("Диагностика",center("🩺 Диагностика","Только подтверждённый read-only источник. Секреты не показываются.",'<div class="data-stack">'+
+      '<div class="data-row"><span>Telegram WebApp</span><b>'+(tg?"OK":"НЕТ")+'</b></div><div class="data-row"><span>initData</span><b>'+(tg?.initData?"ПОЛУЧЕНА":"НЕТ")+'</b></div><div class="data-row"><span>Режим источника</span><b>READ-ONLY</b></div></div>'));
+async()=>{const b=$("checkLuckyJetGateway"),m=$("luckyJetGatewayMsg");b.disabled=true;m.textContent="Проверяем WebSocket-шлюз…";const rr=await api("/api/luckyjet-gateway-test");b.disabled=false;m.textContent=rr.ok&&rr.connected?"✅ WebSocket-шлюз принимает соединение.":"❌ Шлюз недоступен: "+(rr.message||rr.error||"неизвестная ошибка");};
 $("checkLuckyJetProtocol").onclick=async()=>{const b=$("checkLuckyJetProtocol"),m=$("luckyJetProtocolMsg");b.disabled=true;m.textContent="Проверяем авторизацию и канал lucky-jet-94…";const rr=await api("/api/luckyjet-protocol-test");b.disabled=false;if(rr.configured===false){m.textContent="⚠️ "+(rr.message||rr.error);return}const lines=[];if(rr.authenticated||rr.subscribed||rr.publications){lines.push("✅ Поток отвечает");}else{lines.push("❌ Авторизация/подписка не подтверждены");}lines.push("WebSocket: "+(rr.connected?"OK":"нет")+" • Auth: "+(rr.authenticated?"OK":"нет")+" • Subscribe: "+(rr.subscribed?"OK":"нет")+" • Pub: "+Number(rr.publications||0));if(rr.connect_error)lines.push("Connect error: code="+(rr.connect_error.code??"—")+" • "+(rr.connect_error.message||"без сообщения"));if(rr.subscribe_error)lines.push("Subscribe error: code="+(rr.subscribe_error.code??"—")+" • "+(rr.subscribe_error.message||"без сообщения"));if(rr.protocol_error&&!rr.connect_error&&!rr.subscribe_error)lines.push("WebSocket error: "+(rr.protocol_error.message||"код "+(rr.protocol_error.code??"—")));if(rr.dns_summary?.length)rr.dns_summary.forEach(d=>lines.push("DNS "+d.host+": "+(d.resolved?"OK":"ОШИБКА "+(d.error||"unknown"))));if(rr.connect_sub_channels?.length)lines.push("Каналы после connect: "+rr.connect_sub_channels.join(", "));if(rr.protocol_ws_url)lines.push("Endpoint: "+rr.protocol_ws_url);if(rr.latest_coefficient!==null)lines.push("Коэффициент: "+rr.latest_coefficient+(rr.latest_next_coefficient!==null?" → "+rr.latest_next_coefficient:""));m.textContent=lines.join("\n");};
 
     const diagBody=$("screen").querySelector(".screen-body");
@@ -190,37 +190,6 @@ $("checkLuckyJetProtocol").onclick=async()=>{const b=$("checkLuckyJetProtocol"),
       readonlyBtn.disabled=false;
       if(rr.ok&&rr.latest_coefficient!==undefined)readonlyMsg.textContent="✅ Реальный коэффициент: "+rr.latest_coefficient+"x\nИсточник: "+rr.source;
       else readonlyMsg.textContent="❌ "+(rr.message||rr.error||"Нет подтверждённого источника.");
-    };
-
-    const sourceBtn=document.createElement("button");
-    sourceBtn.className="secondary-btn";
-    sourceBtn.id="checkLuckyJetSource";
-    sourceBtn.textContent="📈 Проверить реальный источник коэффициентов";
-    const sourceMsg=document.createElement("div");
-    sourceMsg.id="luckyJetSourceMsg";
-    sourceMsg.className="signal-state";
-    if(diagBody){diagBody.appendChild(sourceBtn);diagBody.appendChild(sourceMsg);}
-    sourceBtn.onclick=async()=>{
-      sourceBtn.disabled=true;
-      sourceMsg.textContent="Проверяем источник реальных раундов…";
-      const rr=await api("/api/luckyjet-source-test");
-      sourceBtn.disabled=false;
-      if(rr.ok&&rr.latest_coefficient!==null){
-        sourceMsg.textContent="✅ Реальный источник ответил. Последний коэффициент: "+rr.latest_coefficient+"x\nРаундов получено: "+Number(rr.count||0)+"\nИсточник пока не подключён к выдаче сигналов.";
-      }else if(rr.configured===false){
-        sourceMsg.textContent="⚠️ Источник найден, но PARSE_API_KEY не настроен на Render.";
-      }else{
-        sourceMsg.textContent="❌ Источник не подтвердил данные: "+(rr.upstream_error||rr.message||rr.error||"неизвестная ошибка");
-      }
-    };
-    $("checkLuckyJetSsid").onclick=async()=>{
-      const b=$("checkLuckyJetSsid"),m=$("luckyJetSsidMsg");
-      b.disabled=true;m.textContent="Проверяем наличие SSID на сервере…";
-      const rr=await api("/api/luckyjet-ssid-test");
-      b.disabled=false;
-      if(rr.ok&&rr.configured)m.textContent="✅ Lucky Jet SSID настроен на Render. Длина: "+Number(rr.ssid_length||0)+". Значение скрыто.";
-      else if(rr.error==="luckyjet_ssid_not_configured")m.textContent="❌ LUCKYJET_SSID не настроен на Render.";
-      else m.textContent="❌ Проверка не пройдена: "+(rr.message||rr.error||"неизвестная ошибка");
     };
     return;
   }
