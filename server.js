@@ -910,6 +910,25 @@ async function probeLuckyJetOfficialHeadersAtStartup(){
       try{
         const rr=await fetch(url,{headers:{Accept:"*/*",Origin:"https://1wmljx.life",Referer:page,"User-Agent":"Mozilla/5.0"}});
         const d=await rr.text();
+        if(url.endsWith("/main-CYh8X1YZ.js")){
+          const deps=[...d.matchAll(/["'](?:assets\\/)?([^"'\\s]+\\.js)["']/g)].map(m=>m[1]);
+          const candidates=[...new Set(deps)].filter(x=>x.includes("socket-io-adapter")||x.includes("server")||x.includes("updates"));
+          for(const name of candidates.slice(0,20)){
+            const asset=new URL("/resources/v1/app/assets/"+name,page).toString();
+            try{
+              const ar=await fetch(asset,{headers:{Accept:"*/*",Origin:"https://1wmljx.life",Referer:page,"User-Agent":"Mozilla/5.0"}});
+              const ad=await ar.text();
+              const needleImport="socket-io-adapter-DSFgpOt0.js";
+              const pos=ad.indexOf(needleImport);
+              if(pos>=0){
+                hits.push({
+                  url:asset,term:"adapter-import",index:pos,
+                  snippet:clean(ad.slice(Math.max(0,pos-1800),Math.min(ad.length,pos+3200)))
+                });
+              }
+            }catch{}
+          }
+        }
         for(const term of interesting){
           let p=0,n=0;
           while((p=d.indexOf(term,p))>=0&&n<6){
