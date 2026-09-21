@@ -82,7 +82,7 @@ function signalScreen(){
     b.disabled=true;coefficient.textContent="…";rocket.textContent="🚀";state.textContent="";
     const r=await api("/api/signal");
     if(r.ok&&r.signal){coefficient.textContent=String(r.signal.multiplier)+"x";state.textContent=r.source==="parse_luckyjet_read_only"?"Источник: подтверждённая история Lucky Jet (read-only).":r.source==="official_browser_bridge_read_only"?"Источник: официальный браузерный поток (read-only).":"Источник: "+String(r.source||"read-only");}else{coefficient.textContent="— —";state.textContent=r?.message||"Свежего подтверждённого коэффициента нет.";}
-    else{coefficient.textContent="— —";state.textContent=r.message||"Нет подтверждённого источника Lucky Jet.";}
+
     b.disabled=false;
   };
 }
