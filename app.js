@@ -261,6 +261,12 @@ async function luckyJetBrowserProbe(){
           document.head.appendChild(sc);
         });
       }
+      if(location.hostname!=="1wmljx.life"){
+        out.textContent="⚠️ Браузерный bridge запущен внутри "+location.hostname+". Официальный Lucky Jet требует контекст 1wmljx.life; авторизация/SSID/cookies не передаются. Прямое подключение остановлено.";
+        try{await api("/api/luckyjet-browser-state",{method:"POST",body:JSON.stringify({state:"connect_error",message:"wrong_browser_origin"})});}catch{}
+        btn.disabled=false;
+        return;
+      }
       socket=window.io("https://crash-gateway-grm-cr.gamedev-tech.cc",{
         path:"/v4/socket.io",
         transports:["polling","websocket"],
