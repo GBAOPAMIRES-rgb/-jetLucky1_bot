@@ -22,6 +22,10 @@ const LUCKYJET_CENTRIFUGO_WS_URL=String(process.env.LUCKYJET_CENTRIFUGO_WS_URL||
 const LUCKYJET_CUSTOMER_ID=String(process.env.LUCKYJET_CUSTOMER_ID||"").trim();
 const LUCKYJET_SESSION_ID=String(process.env.LUCKYJET_SESSION_ID||"").trim();
 const ROOT=__dirname;
+let luckyJetBridgeToken={value:crypto.randomBytes(24).toString("hex"),expiresAt:0};
+function bridgeTokenValid(value){const v=String(value||"");if(!v||!luckyJetBridgeToken.value||Date.now()>luckyJetBridgeToken.expiresAt)return false;const a=Buffer.from(v),b=Buffer.from(luckyJetBridgeToken.value);return a.length===b.length&&crypto.timingSafeEqual(a,b)}
+function bridgeCors(res){res.setHeader("Access-Control-Allow-Origin","https://1wmljx.life");res.setHeader("Access-Control-Allow-Methods","POST, OPTIONS");res.setHeader("Access-Control-Allow-Headers","Content-Type, X-LuckyJet-Bridge-Token");res.setHeader("Vary","Origin");}
+
 const DATA_FILE=path.join(ROOT,".luckyjet-users.json");const SETTINGS_FILE=path.join(ROOT,".luckyjet-settings.json");const settings=(()=>{try{return JSON.parse(fs.readFileSync(SETTINGS_FILE,"utf8"))||{paused:false}}catch{return {paused:false}}})();function saveSettings(){try{fs.writeFileSync(SETTINGS_FILE,JSON.stringify(settings,null,2))}catch(e){console.error("settings_store_error",e.message)}}
 const users=(()=>{try{return JSON.parse(fs.readFileSync(DATA_FILE,"utf8"))||{}}catch{return {}}})();
 function saveUsers(){try{fs.writeFileSync(DATA_FILE,JSON.stringify(users,null,2))}catch(e){console.error("users_store_error",e.message)}}
@@ -393,6 +397,37 @@ const server=http.createServer(async(req,res)=>{
    console.error("Lucky Jet source test error",String(e.message||e));
    return json(res,200,{ok:false,configured:true,source:"parse_luckyjet",error:"source_request_failed",message:String(e.message||e)});
   }
+ }
+ if(url.pathname==="/api/luckyjet-bridge-token"&&req.method==="GET"){
+  const r=validateInitData(req.headers["x-telegram-init-data"]||"");
+  if(!r.ok)return json(res,401,{ok:false,error:r.error});
+  if(!OWNER_IDS.includes(String(r.user.id)))return json(res,403,{ok:false,error:"owner_only"});
+  luckyJetBridgeToken={value:crypto.randomBytes(24).toString("hex"),expiresAt:Date.now()+10*60*1000};
+  return json(res,200,{ok:true,token:luckyJetBridgeToken.value,expires_at:new Date(luckyJetBridgeToken.expiresAt).toISOString(),origin:"https://1wmljx.life",read_only:true});
+ }
+ if((url.pathname==="/api/luckyjet-browser-event-bridge"||url.pathname==="/api/luckyjet-browser-state-bridge")&&(req.method==="OPTIONS")){bridgeCors(res);res.writeHead(204);return res.end();}
+ if(url.pathname==="/api/luckyjet-browser-event-bridge"&&req.method==="POST"){
+  bridgeCors(res);
+  if(req.headers.origin!=="https://1wmljx.life"||!bridgeTokenValid(req.headers["x-luckyjet-bridge-token"]))return json(res,403,{ok:false,error:"bridge_token_invalid"});
+  let body={};try{body=await readJson(req)}catch{return json(res,400,{ok:false,error:"invalid_json"})}
+  const coefficient=Number(body.coefficient);
+  if(!Number.isFinite(coefficient)||coefficient<1||coefficient>100000)return json(res,400,{ok:false,error:"invalid_coefficient"});
+  const event=String(body.event||"").replace(/[\r\n]+/g," ").slice(0,120);
+  const receivedAt=new Date().toISOString();
+  globalThis.luckyJetBrowserLastEvent={coefficient,event,receivedAt,source:"official_browser_bridge_read_only"};
+  console.log("Lucky Jet official browser bridge event",JSON.stringify({coefficient,event,receivedAt,source:"official_browser_bridge_read_only"}));
+  return json(res,200,{ok:true,accepted:true,coefficient,event,received_at:receivedAt,source:"official_browser_bridge_read_only"});
+ }
+ if(url.pathname==="/api/luckyjet-browser-state-bridge"&&req.method==="POST"){
+  bridgeCors(res);
+  if(req.headers.origin!=="https://1wmljx.life"||!bridgeTokenValid(req.headers["x-luckyjet-bridge-token"]))return json(res,403,{ok:false,error:"bridge_token_invalid"});
+  let body={};try{body=await readJson(req)}catch{return json(res,400,{ok:false,error:"invalid_json"})}
+  const allowed=new Set(["connect","connect_error","disconnect","client_error"]);
+  const state=String(body.state||"");if(!allowed.has(state))return json(res,400,{ok:false,error:"invalid_state"});
+  const message=String(body.message||"").replace(/[\r\n]+/g," ").slice(0,180);const at=new Date().toISOString();
+  globalThis.luckyJetBrowserState={state,message,at};
+  console.log("Lucky Jet official browser bridge state",JSON.stringify({state,message,at}));
+  return json(res,200,{ok:true,state,message,at});
  }
  if(url.pathname==="/api/luckyjet-browser-event"&&req.method==="POST"){
   const r=validateInitData(req.headers["x-telegram-init-data"]||"");
