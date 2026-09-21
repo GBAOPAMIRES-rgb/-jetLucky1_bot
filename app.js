@@ -175,6 +175,23 @@ $("checkLuckyJetProtocol").onclick=async()=>{const b=$("checkLuckyJetProtocol"),
     bridgeBtn.onclick=()=>window.open("/bridge.html","_blank","noopener");
     if(diagBody)diagBody.appendChild(bridgeBtn);
 
+    const readonlyBtn=document.createElement("button");
+    readonlyBtn.className="primary-btn";
+    readonlyBtn.id="checkLuckyJetReadonly";
+    readonlyBtn.textContent="🔎 Проверить read-only источник";
+    const readonlyMsg=document.createElement("div");
+    readonlyMsg.id="luckyJetReadonlyMsg";
+    readonlyMsg.className="signal-state";
+    if(diagBody){diagBody.appendChild(readonlyBtn);diagBody.appendChild(readonlyMsg);}
+    readonlyBtn.onclick=async()=>{
+      readonlyBtn.disabled=true;
+      readonlyMsg.textContent="Проверяем только подтверждённые данные…";
+      const rr=await api("/api/luckyjet-readonly-check");
+      readonlyBtn.disabled=false;
+      if(rr.ok&&rr.latest_coefficient!==undefined)readonlyMsg.textContent="✅ Реальный коэффициент: "+rr.latest_coefficient+"x\nИсточник: "+rr.source;
+      else readonlyMsg.textContent="❌ "+(rr.message||rr.error||"Нет подтверждённого источника.");
+    };
+
     const sourceBtn=document.createElement("button");
     sourceBtn.className="secondary-btn";
     sourceBtn.id="checkLuckyJetSource";
