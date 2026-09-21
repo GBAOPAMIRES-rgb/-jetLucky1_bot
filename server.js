@@ -11,6 +11,8 @@ const TELEGRAM_PUBLIC_KEY_HEX="e7bf03a2fa4602af4580703d88dda5bb59f32ed8b02a56c18
 let TELEGRAM_BOT_ID=String(process.env.TELEGRAM_BOT_ID||"").trim();
 const MINI_APP_URL=process.env.MINI_APP_URL||"https://jetlucky1.onrender.com";
 const WEBHOOK_URL=process.env.WEBHOOK_URL||"https://jetlucky1.onrender.com/telegram/webhook";
+const PARSE_API_KEY=String(process.env.PARSE_API_KEY||"").trim();
+const PARSE_LUCKYJET_URL=String(process.env.PARSE_LUCKYJET_URL||"https://api.parse.bot/scraper/2b7d091d-f8a1-483b-b734-63b3d8a81e53/get_round_history").trim();
 const ROOT=__dirname;
 let luckyJetBridgeToken={value:crypto.randomBytes(24).toString("hex"),expiresAt:0};
 function bridgeTokenValid(value){const v=String(value||"");if(!v||!luckyJetBridgeToken.value||Date.now()>luckyJetBridgeToken.expiresAt)return false;const a=Buffer.from(v),b=Buffer.from(luckyJetBridgeToken.value);return a.length===b.length&&crypto.timingSafeEqual(a,b)}
@@ -75,6 +77,19 @@ function validateInitData(initData){
  }
  return {ok:true,user};
 }
+async function fetchParseLuckyJetHistory(){
+ if(!PARSE_API_KEY)return {ok:false,error:"parse_api_key_not_configured"};
+ try{
+  const r=await fetch(PARSE_LUCKYJET_URL,{headers:{"X-API-Key":PARSE_API_KEY,"Accept":"application/json"},signal:AbortSignal.timeout(8000)});
+  const d=await r.json().catch(()=>null);
+  if(!r.ok)return {ok:false,error:"parse_http_"+r.status};
+  const rounds=Array.isArray(d?.data?.rounds)?d.data.rounds:Array.isArray(d?.rounds)?d.rounds:[];
+  const clean=rounds.map(x=>({id:String(x.id||x.round_id||"").slice(0,120),coefficient:Number(x.coefficient??x.top_coefficient),hash:String(x.hash||"").slice(0,200),salt:String(x.salt||"").slice(0,200)})).filter(x=>x.id&&Number.isFinite(x.coefficient)&&x.coefficient>=1&&x.coefficient<=100000);
+  if(!clean.length)return {ok:false,error:"parse_no_rounds"};
+  return {ok:true,rounds:clean,source:"parse_luckyjet_read_only",fetched_at:new Date().toISOString()};
+ }catch(e){return {ok:false,error:"parse_request_failed",message:String(e.message||e).slice(0,180)}}
+}
+
 async function telegram(method,payload){
  if(!TELEGRAM_BOT_TOKEN)throw new Error("telegram_bot_token_not_configured");
  const r=await fetch("https://api.telegram.org/bot"+TELEGRAM_BOT_TOKEN+"/"+method,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(payload)});
@@ -221,6 +236,11 @@ const server=http.createServer(async(req,res)=>{
   const hasEvent=Boolean(e);
   return json(res,200,{ok:true,connected,has_event:hasEvent,latest_coefficient:e?.coefficient??null,event:e?.event??null,received_at:e?.receivedAt??null,source:e?.source??null,state:s});
  }
+ if(url.pathname==="/api/luckyjet-source-status"&&req.method==="GET"){
+  const r=validateInitData(req.headers["x-telegram-init-data"]||"");
+  if(!r.ok||!OWNER_IDS.includes(String(r.user.id)))return json(res,403,{ok:false,error:"owner_only"});
+  return json(res,200,{ok:true,parse_configured:Boolean(PARSE_API_KEY),source:"parse_luckyjet_read_only",official_api:false});
+ }
  if(url.pathname==="/api/signal"&&req.method==="GET"){
   const r=validateInitData(req.headers["x-telegram-init-data"]||"");
   if(!r.ok)return json(res,401,{ok:false,error:r.error});
@@ -230,14 +250,18 @@ const server=http.createServer(async(req,res)=>{
   const e=globalThis.luckyJetBrowserLastEvent||null;
   const fresh=e&&e.receivedAt&&(Date.now()-Date.parse(e.receivedAt)<=15000);
   if(fresh)return json(res,200,{ok:true,signal:{multiplier:e.coefficient},source:"browser_socketio_read_only",received_at:e.receivedAt,event:e.event});
-  return json(res,200,{ok:false,error:"signal_source_unavailable",message:"Нет свежего подтверждённого события Lucky Jet. Коэффициент не генерируется и не подставляется."});
+  const p=await fetchParseLuckyJetHistory();
+  if(p.ok&&p.rounds[0])return json(res,200,{ok:true,signal:{multiplier:p.rounds[0].coefficient},source:p.source,received_at:p.fetched_at,round_id:p.rounds[0].id});
+  return json(res,200,{ok:false,error:"signal_source_unavailable",message:PARSE_API_KEY?"Нет подтверждённого события Lucky Jet.":"Нет настроенного подтверждённого источника Lucky Jet. Коэффициент не генерируется и не подставляется."});
  }
  if(url.pathname==="/api/history"&&req.method==="GET"){
   const r=validateInitData(req.headers["x-telegram-init-data"]||"");
   if(!r.ok)return json(res,401,{ok:false,error:r.error});
   const u=ensureUser(r.user);const isOwner=OWNER_IDS.includes(String(r.user.id));
   if(!isOwner&&(!u.registered||!u.onewin_id||u.restricted))return json(res,403,{ok:false,error:"access_denied"});
-  return json(res,200,{ok:true,source_confirmed:false,history:[],message:"Нет подтверждённого источника истории Lucky Jet."});
+  const p=await fetchParseLuckyJetHistory();
+  if(p.ok)return json(res,200,{ok:true,source_confirmed:true,source:p.source,fetched_at:p.fetched_at,history:p.rounds.map(x=>({time:"",multiplier:x.coefficient,round_id:x.id}))});
+  return json(res,200,{ok:true,source_confirmed:false,history:[],message:PARSE_API_KEY?"Источник не вернул подтверждённые раунды.":"Нет настроенного подтверждённого источника истории Lucky Jet."});
  }
  if(url.pathname==="/api/profile"&&req.method==="POST"){
   const r=validateInitData(req.headers["x-telegram-init-data"]||"");
