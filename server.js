@@ -420,7 +420,10 @@ const server=http.createServer(async(req,res)=>{
   const u=ensureUser(r.user);
   const isOwner=OWNER_IDS.includes(String(r.user.id));
   if(!isOwner&&(!u.registered||!u.onewin_id||u.restricted))return json(res,403,{ok:false,error:"access_denied"});
-  const e=globalThis.luckyJetBrowserLastEvent||null;\n  const fresh=e&&e.receivedAt&&(Date.now()-Date.parse(e.receivedAt)<=15000);\n  if(fresh)return json(res,200,{ok:true,signal:{multiplier:e.coefficient},source:"browser_socketio_read_only",received_at:e.receivedAt,event:e.event});\n  return json(res,200,{ok:false,error:"signal_source_unavailable",message:"Нет свежего подтверждённого события Lucky Jet. Коэффициент не генерируется и не подставляется."});
+  const e=globalThis.luckyJetBrowserLastEvent||null;
+  const fresh=e&&e.receivedAt&&(Date.now()-Date.parse(e.receivedAt)<=15000);
+  if(fresh)return json(res,200,{ok:true,signal:{multiplier:e.coefficient},source:"browser_socketio_read_only",received_at:e.receivedAt,event:e.event});
+  return json(res,200,{ok:false,error:"signal_source_unavailable",message:"Нет свежего подтверждённого события Lucky Jet. Коэффициент не генерируется и не подставляется."});
  }
  if(url.pathname==="/api/history"&&req.method==="GET"){
   const r=validateInitData(req.headers["x-telegram-init-data"]||"");
