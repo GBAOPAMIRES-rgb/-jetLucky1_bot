@@ -161,36 +161,47 @@ async function adminScreen(type){
   }
   if(type==="diag"){
     const r=await api("/api/bot/status");
-    setScreen("Диагностика",center("🩺 Диагностика","Только подтверждённый read-only источник. Секреты не показываются.",'<div class="data-stack">'+
-      '<div class="data-row"><span>Telegram WebApp</span><b>'+(tg?"OK":"НЕТ")+'</b></div><div class="data-row"><span>initData</span><b>'+(tg?.initData?"ПОЛУЧЕНА":"НЕТ")+'</b></div><div class="data-row"><span>Режим источника</span><b>READ-ONLY</b></div></div>'));
-async()=>{const b=$("checkLuckyJetGateway"),m=$("luckyJetGatewayMsg");b.disabled=true;m.textContent="Проверяем WebSocket-шлюз…";const rr=await api("/api/luckyjet-gateway-test");b.disabled=false;m.textContent=rr.ok&&rr.connected?"✅ WebSocket-шлюз принимает соединение.":"❌ Шлюз недоступен: "+(rr.message||rr.error||"неизвестная ошибка");};
-$("checkLuckyJetProtocol").onclick=async()=>{const b=$("checkLuckyJetProtocol"),m=$("luckyJetProtocolMsg");b.disabled=true;m.textContent="Проверяем авторизацию и канал lucky-jet-94…";const rr=await api("/api/luckyjet-protocol-test");b.disabled=false;if(rr.configured===false){m.textContent="⚠️ "+(rr.message||rr.error);return}const lines=[];if(rr.authenticated||rr.subscribed||rr.publications){lines.push("✅ Поток отвечает");}else{lines.push("❌ Авторизация/подписка не подтверждены");}lines.push("WebSocket: "+(rr.connected?"OK":"нет")+" • Auth: "+(rr.authenticated?"OK":"нет")+" • Subscribe: "+(rr.subscribed?"OK":"нет")+" • Pub: "+Number(rr.publications||0));if(rr.connect_error)lines.push("Connect error: code="+(rr.connect_error.code??"—")+" • "+(rr.connect_error.message||"без сообщения"));if(rr.subscribe_error)lines.push("Subscribe error: code="+(rr.subscribe_error.code??"—")+" • "+(rr.subscribe_error.message||"без сообщения"));if(rr.protocol_error&&!rr.connect_error&&!rr.subscribe_error)lines.push("WebSocket error: "+(rr.protocol_error.message||"код "+(rr.protocol_error.code??"—")));if(rr.dns_summary?.length)rr.dns_summary.forEach(d=>lines.push("DNS "+d.host+": "+(d.resolved?"OK":"ОШИБКА "+(d.error||"unknown"))));if(rr.connect_sub_channels?.length)lines.push("Каналы после connect: "+rr.connect_sub_channels.join(", "));if(rr.protocol_ws_url)lines.push("Endpoint: "+rr.protocol_ws_url);if(rr.latest_coefficient!==null)lines.push("Коэффициент: "+rr.latest_coefficient+(rr.latest_next_coefficient!==null?" → "+rr.latest_next_coefficient:""));m.textContent=lines.join("\n");};
-
-    const diagBody=$("screen").querySelector(".screen-body");
-
+    setScreen("Диагностика",center("🩺 Диагностика","Проверяем только read-only источник. Секреты не читаются и не передаются.",
+      '<div class="data-stack" id="luckyJetStages">'+
+      '<div class="data-row"><span>1. Telegram WebApp</span><b>'+(tg?.initData?"OK":"НЕТ")+'</b></div>'+
+      '<div class="data-row"><span>2. Официальная страница</span><b>ПРОВЕРЯЕМ</b></div>'+
+      '<div class="data-row"><span>3. Браузерная сессия</span><b>ПРОВЕРЯЕМ</b></div>'+
+      '<div class="data-row"><span>4. Socket.IO transport</span><b>ПРОВЕРЯЕМ</b></div>'+
+      '<div class="data-row"><span>5. Реальное событие</span><b>НЕТ</b></div>'+
+      '<div class="data-row"><span>6. Коэффициент</span><b>НЕТ</b></div>'+
+      '</div>'+
+      '<div id="luckyJetDiagMsg" class="signal-state">Проверяем состояние браузерного read-only bridge…</div>'));
+    const msg=$("luckyJetDiagMsg");
+    const stages=$("luckyJetStages");
+    const setStage=(n,value)=>{
+      const rows=stages?.querySelectorAll(".data-row")||[];
+      const row=rows[n-1]; if(!row)return;
+      const b=row.querySelector("b"); if(b)b.textContent=value;
+    };
+    const status=await api("/api/luckyjet-browser-status");
+    const bs=status?.state||null;
+    setStage(2,location.hostname==="1wmljx.onrender.com"?"ОТКРЫТА":"ОТДЕЛЬНО");
+    setStage(3,bs?.state==="connect"?"ДОСТУПНА":bs?.state==="connect_error"?"НЕТ":"НЕТ ДАННЫХ");
+    setStage(4,bs?.state==="connect"?"УСТАНОВЛЕН":"НЕТ");
+    if(status?.has_event){
+      setStage(5,"ПОЛУЧЕНО");
+      setStage(6,typeof status.latest_coefficient==="number"?String(status.latest_coefficient)+"x":"НЕТ");
+      msg.textContent="✅ Получено подтверждённое read-only событие. Источник: "+String(status.source||"browser bridge");
+    }else{
+      setStage(5,"НЕТ");
+      setStage(6,"НЕТ");
+      msg.textContent=bs?.message?("⚠️ Browser bridge: "+bs.message):"ℹ️ Свежего реального события нет. Коэффициент не генерируется и не подставляется.";
+    }
     const bridgeBtn=document.createElement("button");
     bridgeBtn.className="secondary-btn";
-    bridgeBtn.id="openLuckyJetBridge";
     bridgeBtn.textContent="🔗 Открыть официальный read-only Bridge";
     bridgeBtn.onclick=()=>window.open("/bridge.html","_blank","noopener");
-    if(diagBody)diagBody.appendChild(bridgeBtn);
-
     const readonlyBtn=document.createElement("button");
     readonlyBtn.className="primary-btn";
-    readonlyBtn.id="checkLuckyJetReadonly";
-    readonlyBtn.textContent="🔎 Проверить read-only источник";
-    const readonlyMsg=document.createElement("div");
-    readonlyMsg.id="luckyJetReadonlyMsg";
-    readonlyMsg.className="signal-state";
-    if(diagBody){diagBody.appendChild(readonlyBtn);diagBody.appendChild(readonlyMsg);}
-    readonlyBtn.onclick=async()=>{
-      readonlyBtn.disabled=true;
-      readonlyMsg.textContent="Проверяем только подтверждённые данные…";
-      const rr=await api("/api/luckyjet-readonly-check");
-      readonlyBtn.disabled=false;
-      if(rr.ok&&rr.latest_coefficient!==undefined)readonlyMsg.textContent="✅ Реальный коэффициент: "+rr.latest_coefficient+"x\nИсточник: "+rr.source;
-      else readonlyMsg.textContent="❌ "+(rr.message||rr.error||"Нет подтверждённого источника.");
-    };
+    readonlyBtn.textContent="🔄 Проверить ещё раз";
+    readonlyBtn.onclick=()=>adminScreen("diag");
+    const body=$("screen").querySelector(".screen-body");
+    if(body){body.appendChild(bridgeBtn);body.appendChild(readonlyBtn);}
     return;
   }
   if(type==="logs"){setScreen("Логи",center("📋 Логи","Безопасный статус без секретов.",'<div class="admin-status">Источник: <b>Render</b><br><br>Секреты и токены в Mini App не показываются.</div>'));return}
