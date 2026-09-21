@@ -281,7 +281,6 @@ async function luckyJetBrowserProbe(){
           const detail=(extra&&String(extra).slice(0,120))||"";
           const msg="stage="+label+" transport="+transport+(detail?" detail="+detail:"");
           out.textContent="ℹ️ "+msg;
-          reportState?.("client_error",msg);
         };
         if(engine){
           engine.on("upgrade",t=>reportEngine("upgrade",t?.name||""));
