@@ -315,6 +315,8 @@ async function luckyJetBrowserProbe(){
       out.textContent="❌ "+(e?.message||String(e)); btn.disabled=false; socket=null;
     }
   };
+  // Owner bridge starts automatically; the button remains available to stop/restart it.
+  setTimeout(()=>{try{btn.click()}catch{}},0);
 }
 async function init(){
   const c=await api("/api/config");REGISTER_URL=c.registrationUrl||"#";
