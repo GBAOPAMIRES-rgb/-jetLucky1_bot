@@ -104,7 +104,7 @@ function serveStatic(req,res){
 }
 const server=http.createServer(async(req,res)=>{
  const url=new URL(req.url,"http://localhost");
- if(url.pathname==="/health")return json(res,200,{ok:true,service:"jetLucky1",mode:"read-only",telegramValidation:TELEGRAM_BOT_TOKEN?"configured":"not_configured",telegramBotId:TELEGRAM_BOT_ID||null,luckyjetSsid:LUCKYJET_SSID?{configured:true,length:LUCKYJET_SSID.length}:{configured:false},owners:OWNER_IDS.length,webhook:WEBHOOK_URL,miniApp:{index:fs.existsSync(path.join(ROOT,"index.html")),css:fs.existsSync(path.join(ROOT,"style.css")),js:fs.existsSync(path.join(ROOT,"app.js"))}});
+ if(url.pathname==="/health")return json(res,200,{ok:true,service:"jetLucky1",mode:"read-only",telegramValidation:TELEGRAM_BOT_TOKEN?"configured":"not_configured",telegramBotId:TELEGRAM_BOT_ID||null,owners:OWNER_IDS.length,webhook:WEBHOOK_URL,miniApp:{index:fs.existsSync(path.join(ROOT,"index.html")),css:fs.existsSync(path.join(ROOT,"style.css")),js:fs.existsSync(path.join(ROOT,"app.js"))}});
  if(url.pathname==="/api/config")return json(res,200,{ok:true,registrationUrl:REGISTER_URL,miniAppUrl:MINI_APP_URL});
  if(url.pathname==="/api/access"){
   const result=validateInitData(url.searchParams.get("init_data"));if(!result.ok)return json(res,401,{ok:false,error:result.error});
@@ -217,7 +217,9 @@ const server=http.createServer(async(req,res)=>{
   if(!OWNER_IDS.includes(String(r.user.id)))return json(res,403,{ok:false,error:"owner_only"});
   const e=globalThis.luckyJetBrowserLastEvent||null;
   const s=globalThis.luckyJetBrowserState||null;
-  const connected=s?.state==="connect" && s?.at && (Date.now()-Date.parse(s.at)<=30000);\n  const hasEvent=Boolean(e);\n  return json(res,200,{ok:true,connected,has_event:hasEvent,latest_coefficient:e?.coefficient??null,event:e?.event??null,received_at:e?.receivedAt??null,source:e?.source??null,state:s});
+  const connected=s?.state==="connect" && s?.at && (Date.now()-Date.parse(s.at)<=30000);
+  const hasEvent=Boolean(e);
+  return json(res,200,{ok:true,connected,has_event:hasEvent,latest_coefficient:e?.coefficient??null,event:e?.event??null,received_at:e?.receivedAt??null,source:e?.source??null,state:s});
  }
  if(url.pathname==="/api/signal"&&req.method==="GET"){
   const r=validateInitData(req.headers["x-telegram-init-data"]||"");
