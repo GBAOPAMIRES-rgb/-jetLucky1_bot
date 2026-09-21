@@ -166,6 +166,8 @@ async function adminScreen(type){
     $("checkLuckyJetGateway").onclick=async()=>{const b=$("checkLuckyJetGateway"),m=$("luckyJetGatewayMsg");b.disabled=true;m.textContent="Проверяем WebSocket-шлюз…";const rr=await api("/api/luckyjet-gateway-test");b.disabled=false;m.textContent=rr.ok&&rr.connected?"✅ WebSocket-шлюз принимает соединение.":"❌ Шлюз недоступен: "+(rr.message||rr.error||"неизвестная ошибка");};
 $("checkLuckyJetProtocol").onclick=async()=>{const b=$("checkLuckyJetProtocol"),m=$("luckyJetProtocolMsg");b.disabled=true;m.textContent="Проверяем авторизацию и канал lucky-jet-94…";const rr=await api("/api/luckyjet-protocol-test");b.disabled=false;if(rr.configured===false){m.textContent="⚠️ "+(rr.message||rr.error);return}const lines=[];if(rr.authenticated||rr.subscribed||rr.publications){lines.push("✅ Поток отвечает");}else{lines.push("❌ Авторизация/подписка не подтверждены");}lines.push("WebSocket: "+(rr.connected?"OK":"нет")+" • Auth: "+(rr.authenticated?"OK":"нет")+" • Subscribe: "+(rr.subscribed?"OK":"нет")+" • Pub: "+Number(rr.publications||0));if(rr.connect_error)lines.push("Connect error: code="+(rr.connect_error.code??"—")+" • "+(rr.connect_error.message||"без сообщения"));if(rr.subscribe_error)lines.push("Subscribe error: code="+(rr.subscribe_error.code??"—")+" • "+(rr.subscribe_error.message||"без сообщения"));if(rr.protocol_error&&!rr.connect_error&&!rr.subscribe_error)lines.push("WebSocket error: "+(rr.protocol_error.message||"код "+(rr.protocol_error.code??"—")));if(rr.dns_summary?.length)rr.dns_summary.forEach(d=>lines.push("DNS "+d.host+": "+(d.resolved?"OK":"ОШИБКА "+(d.error||"unknown"))));if(rr.connect_sub_channels?.length)lines.push("Каналы после connect: "+rr.connect_sub_channels.join(", "));if(rr.protocol_ws_url)lines.push("Endpoint: "+rr.protocol_ws_url);if(rr.latest_coefficient!==null)lines.push("Коэффициент: "+rr.latest_coefficient+(rr.latest_next_coefficient!==null?" → "+rr.latest_next_coefficient:""));m.textContent=lines.join("\n");};
 
+    const diagBody=$("screen").querySelector(".screen-body");
+
     const bridgeBtn=document.createElement("button");
     bridgeBtn.className="secondary-btn";
     bridgeBtn.id="openLuckyJetBridge";
@@ -180,7 +182,6 @@ $("checkLuckyJetProtocol").onclick=async()=>{const b=$("checkLuckyJetProtocol"),
     const sourceMsg=document.createElement("div");
     sourceMsg.id="luckyJetSourceMsg";
     sourceMsg.className="signal-state";
-    const diagBody=$("screen").querySelector(".screen-body");
     if(diagBody){diagBody.appendChild(sourceBtn);diagBody.appendChild(sourceMsg);}
     sourceBtn.onclick=async()=>{
       sourceBtn.disabled=true;
