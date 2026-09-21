@@ -887,7 +887,7 @@ async function probeLuckyJetOfficialHeadersAtStartup(){
   try{
     const rr=await fetch(url,{headers:{Accept:"*/*",Origin:"https://1wmljx.life",Referer:"https://1wmljx.life/","User-Agent":"Mozilla/5.0"}});
     const d=await rr.text();
-    const terms=["al=()=>","al=({","al:","al,","AR=()=>","AR=({","IR=()=>","IR=({","traceId","window.INITIAL_DATA","customerId","sessionId","SS_ID","ssid","accessToken","authToken","ot.headers=()=>","JI=({"];
+    const terms=["al=({","al=()=>","al:","AR=()=>","IR=()=>","traceId","customerId","sessionId","SS_ID","ssid","accessToken","authToken"];
     const hits=[];
     for(const term of terms){
       let p=0,n=0;
