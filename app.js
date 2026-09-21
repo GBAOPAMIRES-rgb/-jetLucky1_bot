@@ -233,122 +233,6 @@ function navigate(section){
 }
 
 
-async function luckyJetBrowserProbe(){
-  const out=document.createElement("div");
-  out.className="signal-state"; out.style.whiteSpace="pre-line";
-  const host=$("screen"); if(!host)return;
-  const box=document.createElement("div"); box.className="support-card";
-  box.innerHTML="<b>Браузерный bridge Lucky Jet</b><br><small>Этот Mini App работает на jetlucky1.onrender.com. Официальный Lucky Jet работает в контексте 1wmljx.life. Поэтому bridge не пытается подключаться к официальному Socket.IO из Render-контекста и не читает SSID, cookies или токены.</small>";
-  const btn=document.createElement("button"); btn.className="secondary-btn"; btn.textContent="📡 Подключить браузерный поток Lucky Jet";
-  box.appendChild(btn); box.appendChild(out); host.querySelector(".screen-body")?.appendChild(box);
-
-  let socket=null, connected=false, sentCount=0;
-
-  btn.onclick=async()=>{
-    if(socket){try{socket.close()}catch{} socket=null; connected=false; btn.textContent="📡 Подключить браузерный поток Lucky Jet"; out.textContent="Соединение закрыто."; return;}
-    btn.disabled=true; out.textContent="Подключаем read-only Socket.IO…";
-    try{
-      if(!window.io){
-        await new Promise((resolve,reject)=>{
-          const sc=document.createElement("script");
-          sc.src="https://cdn.socket.io/4.8.1/socket.io.min.js";
-          sc.onload=resolve; sc.onerror=()=>reject(new Error("Не удалось загрузить Socket.IO client"));
-          document.head.appendChild(sc);
-        });
-      }
-      if(location.hostname!=="1wmljx.life"){
-        out.textContent="ℹ️ Текущий Mini App открыт на "+location.hostname+". Это не официальный контекст 1wmljx.life, поэтому прямое подключение остановлено. Авторизация, SSID и cookies не передаются.";
-        try{await api("/api/luckyjet-browser-state",{method:"POST",body:JSON.stringify({state:"connect_error",message:"wrong_browser_origin"})});}catch{}
-        btn.disabled=false;
-        return;
-      }
-      socket=window.io("https://crash-gateway-grm-cr.gamedev-tech.cc",{
-        path:"/v4/socket.io",
-        transports:["polling","websocket"],
-        forceNew:true,
-        reconnection:true,
-        reconnectionAttempts:Infinity,
-        reconnectionDelay:1000,
-        withCredentials:true,
-        query:{Language:"en",xorigin:location.host,app:"frontend"},
-        timeout:10000
-      });
-      // Read-only transport diagnostics: report the actual Socket.IO engine stage
-      // without reading or transmitting cookies, tokens, headers, or session secrets.
-      try{
-        const engine=socket.io?.engine;
-        const reportEngine=(label,extra)=>{
-          const transport=engine?.transport?.name||"unknown";
-          const detail=(extra&&String(extra).slice(0,120))||"";
-          const msg="stage="+label+" transport="+transport+(detail?" detail="+detail:"");
-          out.textContent="ℹ️ "+msg;
-        };
-        if(engine){
-          engine.on("upgrade",t=>reportEngine("upgrade",t?.name||""));
-          engine.on("upgradeError",e=>reportEngine("upgrade_error",e?.message||""));
-          engine.on("error",e=>reportEngine("engine_error",e?.message||""));
-          engine.on("close",r=>reportEngine("engine_close",r||""));
-        }
-      }catch{}
-      btn.disabled=false; btn.textContent="⏹️ Остановить браузерный поток";
-
-      const reportState=async(state,message)=>{
-        try{await api("/api/luckyjet-browser-state",{method:"POST",body:JSON.stringify({state,message:String(message||"").slice(0,180)})});}catch{}
-      };
-      socket.on("connect",()=>{
-        connected=true;
-        out.textContent="✅ Socket.IO соединение установлено. Ожидаем реальные события…";
-        reportState("connect","Socket.IO connected");
-      });
-      socket.onAny(async(event,data)=>{
-        const raw=typeof data==="string"?data:JSON.stringify(data||{});
-        let value=null;
-        try{
-          const o=typeof data==="string"?JSON.parse(data):data;
-          const walk=v=>{
-            if(v&&typeof v==="object"){
-              for(const [k,val] of Object.entries(v)){
-                if(value===null&&/multiplier|coefficient|coef|factor|rate/i.test(k)&&Number.isFinite(Number(val))) value=Number(val);
-                else walk(val);
-              }
-            }
-          };
-          walk(o);
-        }catch{}
-        const m=raw.match(/([0-9]+(?:\.[0-9]+)?)x/i);
-        if(value===null&&m)value=Number(m[1]);
-        if(value!==null&&Number.isFinite(value)&&value>=1&&value<=100000){
-          out.textContent="✅ Реальное событие: "+value+"x\nСобытие: "+String(event).slice(0,80)+"\nПередано событий: "+(++sentCount);
-          try{
-            const rr=await api("/api/luckyjet-browser-event",{method:"POST",body:JSON.stringify({coefficient:value,event:String(event).slice(0,120)})});
-            if(!rr.ok)out.textContent+="\n⚠️ Backend не принял событие: "+(rr.message||rr.error||"ошибка");
-          }catch{out.textContent+="\n⚠️ Backend недоступен.";}
-        }
-      });
-      socket.on("connect_error",e=>{
-        connected=false;
-        const msg=e?.message||"неизвестная ошибка";
-        const detail=[e?.description,e?.context?.status,e?.context?.statusText].filter(Boolean).join(" | ");
-        const safeMsg=(msg+(detail?" | "+detail:"")).slice(0,180);
-        out.textContent="❌ Socket.IO connect_error: "+safeMsg;
-        reportState("connect_error",safeMsg);
-      });
-      socket.on("disconnect",reason=>{
-        connected=false;
-        if(reason!=="io client disconnect"){
-          out.textContent="⚠️ Socket.IO отключён: "+String(reason);
-          reportState("disconnect",String(reason));
-        }else{
-          reportState("disconnect","io client disconnect");
-        }
-      });
-    }catch(e){
-      out.textContent="❌ "+(e?.message||String(e)); btn.disabled=false; socket=null;
-    }
-  };
-  // Owner bridge starts automatically; the button remains available to stop/restart it.
-  setTimeout(()=>{try{btn.click()}catch{}},0);
-}
 async function init(){
   const c=await api("/api/config");REGISTER_URL=c.registrationUrl||"#";
   const r=await api("/api/access");
@@ -362,7 +246,6 @@ async function init(){
     currentSection="analytics";
     setScreen("Аналитика",center("📊 Аналитика","Статистика системы.",'<div class="metrics-grid">'+metric("СИСТЕМА","ONLINE","Mini App")+metric("ИСТОЧНИК","НЕТ","реальное событие не получено")+metric("РЕЖИМ","READ-ONLY","без ставок и генерации")+'</div><div class="metrics-note"><b>Источник данных</b><p class="muted">Состояние реального read-only источника смотрите в разделе «Диагностика».</p></div>'));
     renderNav();
-    luckyJetBrowserProbe();
   }else{
     registered=!!r.registered;hasAccess=!!r.access;restricted=!!r.restricted;onewinId=r.onewin_id||"";
     document.body.classList.remove("locked");
