@@ -160,8 +160,9 @@ async function adminScreen(type){
     return;
   }
   if(type==="diag"){
-    const status=await api("/api/luckyjet-browser-status");
+    const [status,sourceStatus]=await Promise.all([api("/api/luckyjet-browser-status"),api("/api/luckyjet-source-status")]);
     const bs=status?.state||null;
+    const ps=sourceStatus?.parse||null;
     const tgOk=!!tg?.initData;
     const official=bs?.state==="connect"||bs?.state==="connect_error"||bs?.state==="disconnect";
     const live=Boolean(status?.connected);
@@ -176,10 +177,10 @@ async function adminScreen(type){
       '<button class="data-row diag-row" data-diag="browser"><span>3. Браузерная сессия</span><b>'+browser+'</b><em>›</em></button>'+
       '<button class="data-row diag-row" data-diag="socket"><span>4. Socket.IO transport</span><b>'+socket+'</b><em>›</em></button>'+
       '<button class="data-row diag-row" data-diag="event"><span>5. Реальное событие</span><b>'+event+'</b><em>›</em></button>'+
-      '<button class="data-row diag-row" data-diag="coefficient"><span>6. Коэффициент</span><b>'+coeff+'</b><em>›</em></button>'+
+      '<button class="data-row diag-row" data-diag="coefficient"><span>6. Коэффициент</span><b>'+coeff+'</b><em>›</em></button><button class="data-row diag-row" data-diag="source"><span>7. Read-only источник</span><b>'+(ps?.ok?"ПОДТВЕРЖДЁН":"ОТКЛОНЁН")+'</b><em>›</em></button>'+
       '</div>'+
       '<div id="luckyJetDiagDetail" class="support-card diag-detail"><b>Нажмите на любой пункт</b><p class="muted">Здесь откроется подробная информация по выбранному этапу. Секреты, cookies и SSID не показываются.</p></div>'+
-      '<div id="luckyJetDiagMsg" class="signal-state">'+(status?.has_event?"✅ Реальное read-only событие получено.":"ℹ️ Свежего реального события нет. Коэффициент не генерируется и не подставляется.")+'</div>'));
+      '<div id="luckyJetDiagMsg" class="signal-state">'+(status?.has_event?"✅ Реальное read-only событие получено.":ps?.ok?"✅ Read-only источник подтверждён; браузерное событие пока не получено.":"ℹ️ Подтверждённого реального события пока нет. Коэффициент не генерируется и не подставляется.")+'</div>'));
     const detail=$("luckyJetDiagDetail");
     const details={
       telegram:["Telegram WebApp",tgOk?"OK":"НЕТ",tgOk?"Telegram initData получены для служебной проверки.":"Mini App не получил Telegram initData."],
@@ -187,7 +188,8 @@ async function adminScreen(type){
       browser:["Браузерная сессия",browser,bs?.message?String(bs.message):"Состояние browser bridge пока не подтверждено."],
       socket:["Socket.IO transport",socket,live?"Socket.IO сообщил актуальное соединение за последние 30 секунд.":bs?.message||"Актуальное соединение с transport не подтверждено."],
       event:["Реальное событие",event,status?.has_event?"Получено подтверждённое событие browser bridge.":"Свежего подтверждённого события нет."],
-      coefficient:["Коэффициент",coeff,status?.has_event?"Значение получено из реального события и не генерировалось.":"Значение отсутствует; подстановка запрещена."]
+      coefficient:["Коэффициент",coeff,status?.has_event?"Значение получено из реального события и не генерировалось.":"Значение отсутствует; подстановка запрещена."],
+      source:["Read-only источник",ps?.ok?String(ps.source||"ПОДТВЕРЖДЁН"):"НЕ ПОДТВЕРЖДЁН",ps?.ok?"Последняя проверка Parse успешно вернула реальные раунды.":"Последняя проверка Parse не дала подтверждённых раундов: "+((ps?.failures||[]).map(x=>x.source+" — "+x.error).join("; ")||ps?.error||"нет данных")]
     };
     $("screen").querySelectorAll("[data-diag]").forEach(btn=>btn.onclick=()=>{
       const d=details[btn.dataset.diag];
