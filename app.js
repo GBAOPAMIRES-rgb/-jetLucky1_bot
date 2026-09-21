@@ -160,50 +160,44 @@ async function adminScreen(type){
     return;
   }
   if(type==="diag"){
-    const r=await api("/api/bot/status");
-    setScreen("Диагностика",center("🩺 Диагностика","Read-only проверка реального источника Lucky Jet.",
-      '<div class="data-stack" id="luckyJetStages">'+
-      '<div class="data-row"><span>1. Telegram WebApp</span><b>'+(tg?.initData?"OK":"НЕТ")+'</b></div>'+
-      '<div class="data-row"><span>2. Официальная страница</span><b>ПРОВЕРЯЕМ</b></div>'+
-      '<div class="data-row"><span>3. Браузерная сессия</span><b>ПРОВЕРЯЕМ</b></div>'+
-      '<div class="data-row"><span>4. Socket.IO transport</span><b>ПРОВЕРЯЕМ</b></div>'+
-      '<div class="data-row"><span>5. Реальное событие</span><b>НЕТ</b></div>'+
-      '<div class="data-row"><span>6. Коэффициент</span><b>НЕТ</b></div>'+
-      '</div>'+
-      '<div id="luckyJetDiagMsg" class="signal-state">Проверяем состояние браузерного read-only bridge…</div>'));
-    const msg=$("luckyJetDiagMsg");
-    const stages=$("luckyJetStages");
-    const setStage=(n,value)=>{
-      const rows=stages?.querySelectorAll(".data-row")||[];
-      const row=rows[n-1]; if(!row)return;
-      const b=row.querySelector("b"); if(b)b.textContent=value;
-    };
     const status=await api("/api/luckyjet-browser-status");
     const bs=status?.state||null;
-    setStage(2,"НЕТ — Mini App не 1wmljx.life");
-    setStage(3,bs?.state==="connect"?"ДОСТУПНА":bs?.state==="connect_error"?"НЕТ — ошибка подключения": "НЕДОСТУПНА");
-    setStage(4,bs?.state==="connect"?"УСТАНОВЛЕН":bs?.state==="connect_error"?"ОТКЛОНЁН":"НЕТ ДАННЫХ");
-    if(status?.has_event){
-      setStage(5,"ПОЛУЧЕНО");
-      setStage(6,typeof status.latest_coefficient==="number"?String(status.latest_coefficient)+"x":"НЕТ");
-      msg.textContent="✅ Получено подтверждённое read-only событие. Источник: "+String(status.source||"browser bridge");
-    }else{
-      setStage(5,"НЕТ");
-      setStage(6,"НЕТ");
-      msg.textContent=bs?.message?("⚠️ Browser bridge: "+bs.message):"ℹ️ Свежего реального события нет. Для получения реального события нужен официальный браузерный контекст 1wmljx.life; коэффициент не генерируется и не подставляется.";
-    }
-    const bridgeBtn=document.createElement("button");
-    bridgeBtn.className="secondary-btn";
-    bridgeBtn.textContent="🔗 Открыть официальный read-only Bridge";
-    bridgeBtn.onclick=()=>window.open("/bridge.html","_blank","noopener");
+    const tgOk=!!tg?.initData;
+    const official=bs?.state==="connect"||bs?.state==="connect_error"||bs?.state==="disconnect";
+    const browser=bs?.state==="connect"?"ДОСТУПНА":bs?.state==="connect_error"?"НЕТ — ошибка":"НЕТ ДАННЫХ";
+    const socket=bs?.state==="connect"?"УСТАНОВЛЕН":bs?.state==="connect_error"?"ОТКЛОНЁН":"НЕТ ДАННЫХ";
+    const event=status?.has_event?"ПОЛУЧЕНО":"НЕТ";
+    const coeff=status?.has_event&&typeof status.latest_coefficient==="number"?String(status.latest_coefficient)+"x":"НЕТ";
+    setScreen("Диагностика",center("🩺 Диагностика","Пошаговая read-only проверка реального источника Lucky Jet.",
+      '<div class="data-stack diag-stack" id="luckyJetStages">'+
+      '<button class="data-row diag-row" data-diag="telegram"><span>1. Telegram WebApp</span><b>'+ (tgOk?"OK":"НЕТ") +'</b><em>›</em></button>'+
+      '<button class="data-row diag-row" data-diag="official"><span>2. Официальная страница</span><b>'+ (official?"ПРОВЕРЕНА":"НЕТ ДАННЫХ") +'</b><em>›</em></button>'+
+      '<button class="data-row diag-row" data-diag="browser"><span>3. Браузерная сессия</span><b>'+browser+'</b><em>›</em></button>'+
+      '<button class="data-row diag-row" data-diag="socket"><span>4. Socket.IO transport</span><b>'+socket+'</b><em>›</em></button>'+
+      '<button class="data-row diag-row" data-diag="event"><span>5. Реальное событие</span><b>'+event+'</b><em>›</em></button>'+
+      '<button class="data-row diag-row" data-diag="coefficient"><span>6. Коэффициент</span><b>'+coeff+'</b><em>›</em></button>'+
+      '</div>'+
+      '<div id="luckyJetDiagDetail" class="support-card diag-detail"><b>Нажмите на любой пункт</b><p class="muted">Здесь откроется подробная информация по выбранному этапу. Секреты, cookies и SSID не показываются.</p></div>'+
+      '<div id="luckyJetDiagMsg" class="signal-state">'+(status?.has_event?"✅ Реальное read-only событие получено.":"ℹ️ Свежего реального события нет. Коэффициент не генерируется и не подставляется.")+'</div>'));
+    const detail=$("luckyJetDiagDetail");
+    const details={
+      telegram:["Telegram WebApp",tgOk?"OK":"НЕТ",tgOk?"Telegram initData получены для служебной проверки.":"Mini App не получил Telegram initData."],
+      official:["Официальная страница",official?"ПРОВЕРЕНА":"НЕТ ДАННЫХ",official?"Browser bridge сообщил состояние официального контекста.":"Mini App сам по себе не является официальным контекстом 1wmljx.life."],
+      browser:["Браузерная сессия",browser,bs?.message?String(bs.message):"Состояние browser bridge пока не подтверждено."],
+      socket:["Socket.IO transport",socket,socket==="УСТАНОВЛЕН"?"Socket.IO сообщил успешное соединение.":bs?.message||"Соединение с transport не подтверждено."],
+      event:["Реальное событие",event,status?.has_event?"Получено подтверждённое событие browser bridge.":"Свежего подтверждённого события нет."],
+      coefficient:["Коэффициент",coeff,status?.has_event?"Значение получено из реального события и не генерировалось.":"Значение отсутствует; подстановка запрещена."]
+    };
+    $("screen").querySelectorAll("[data-diag]").forEach(btn=>btn.onclick=()=>{
+      const d=details[btn.dataset.diag];
+      detail.innerHTML="<b>"+escapeHtml(d[0])+"</b><p class='diag-value'>"+escapeHtml(d[1])+"</p><p class='muted'>"+escapeHtml(d[2])+"</p>";
+    });
     const readonlyBtn=document.createElement("button");
     readonlyBtn.className="primary-btn";
     readonlyBtn.textContent="🔄 Проверить ещё раз";
     readonlyBtn.onclick=()=>adminScreen("diag");
     const body=$("screen").querySelector(".screen-body");
-    if(body){body.appendChild(bridgeBtn);body.appendChild(readonlyBtn);}
-    const analyticsDiag=$("openDiagFromAnalytics");
-    if(analyticsDiag)analyticsDiag.onclick=()=>adminScreen("diag");
+    if(body)body.appendChild(readonlyBtn);
     return;
   }
   if(type==="logs"){setScreen("Логи",center("📋 Логи","Безопасный статус без секретов.",'<div class="admin-status">Источник: <b>Render</b><br><br>Секреты и токены в Mini App не показываются.</div>'));return}
@@ -230,7 +224,7 @@ function gate(){
 
 function navigate(section){
   if(section==="more"){currentSection="more";moreScreen();renderNav();return}
-  if(section==="home"){currentSection="analytics";setScreen("Аналитика",center("📊 Аналитика","Статистика системы.",'<div class="metrics-grid">'+metric("СИСТЕМА","ONLINE","Mini App")+metric("ИСТОЧНИК","НЕТ","реальное событие не получено")+metric("РЕЖИМ","READ-ONLY","без ставок и генерации")+'</div><div class="support-card" style="margin-top:10px"><b>Браузерный источник Lucky Jet</b><p class="muted">Mini App: jetlucky1.onrender.com</p><p class="muted">Официальный контекст: 1wmljx.life</p><p class="muted">Прямое подключение из Mini App остановлено. SSID, cookies и авторизация не передаются.</p><button class="secondary-btn" id="openDiagFromAnalytics">🩺 Открыть полную диагностику</button></div>'))}
+  if(section==="home"){currentSection="analytics";setScreen("Аналитика",center("📊 Аналитика","Статистика системы.",'<div class="metrics-grid">'+metric("СИСТЕМА","ONLINE","Mini App")+metric("ИСТОЧНИК","НЕТ","реальное событие не получено")+metric("РЕЖИМ","READ-ONLY","без ставок и генерации")+'</div><div class="metrics-note"><b>Источник данных</b><p class="muted">Состояние реального read-only источника смотрите в разделе «Диагностика».</p></div>'))}
   else if(section==="signals"){currentSection="signals";signalScreen()}
   else if(section==="profile"){currentSection="profile";profileScreen()}
   else if(section==="support"){currentSection="support";supportScreen()}
@@ -238,7 +232,7 @@ function navigate(section){
   else if(["analytics","users","access","bot","diag","logs","owner"].includes(section)){
     if(role!=="owner")return;
     currentSection=section;
-    if(section==="analytics")setScreen("Аналитика",center("📊 Аналитика","Статистика системы.",'<div class="metrics-grid">'+metric("СИСТЕМА","ONLINE","Mini App")+metric("ИСТОЧНИК","НЕТ","реальное событие не получено")+metric("РЕЖИМ","READ-ONLY","без ставок и генерации")+'</div><div class="support-card" style="margin-top:10px"><b>Браузерный источник Lucky Jet</b><p class="muted">Mini App: jetlucky1.onrender.com</p><p class="muted">Официальный контекст: 1wmljx.life</p><p class="muted">Прямое подключение из Mini App остановлено. SSID, cookies и авторизация не передаются.</p><button class="secondary-btn" id="openDiagFromAnalytics">🩺 Открыть полную диагностику</button></div>'));
+    if(section==="analytics")setScreen("Аналитика",center("📊 Аналитика","Статистика системы.",'<div class="metrics-grid">'+metric("СИСТЕМА","ONLINE","Mini App")+metric("ИСТОЧНИК","НЕТ","реальное событие не получено")+metric("РЕЖИМ","READ-ONLY","без ставок и генерации")+'</div><div class="metrics-note"><b>Источник данных</b><p class="muted">Состояние реального read-only источника смотрите в разделе «Диагностика».</p></div>'));
     else adminScreen(section);
   }
   renderNav();
@@ -372,7 +366,7 @@ async function init(){
     $("roundNav").classList.remove("hidden");
     renderNav();
     currentSection="analytics";
-    setScreen("Аналитика",center("📊 Аналитика","Статистика системы.",'<div class="metrics-grid">'+metric("СИСТЕМА","ONLINE","Mini App")+metric("ИСТОЧНИК","НЕТ","реальное событие не получено")+metric("РЕЖИМ","READ-ONLY","без ставок и генерации")+'</div><div class="support-card" style="margin-top:10px"><b>Браузерный источник Lucky Jet</b><p class="muted">Mini App: jetlucky1.onrender.com</p><p class="muted">Официальный контекст: 1wmljx.life</p><p class="muted">Прямое подключение из Mini App остановлено. SSID, cookies и авторизация не передаются.</p><button class="secondary-btn" id="openDiagFromAnalytics">🩺 Открыть полную диагностику</button></div>'));
+    setScreen("Аналитика",center("📊 Аналитика","Статистика системы.",'<div class="metrics-grid">'+metric("СИСТЕМА","ONLINE","Mini App")+metric("ИСТОЧНИК","НЕТ","реальное событие не получено")+metric("РЕЖИМ","READ-ONLY","без ставок и генерации")+'</div><div class="metrics-note"><b>Источник данных</b><p class="muted">Состояние реального read-only источника смотрите в разделе «Диагностика».</p></div>'));
     renderNav();
     luckyJetBrowserProbe();
   }else{
