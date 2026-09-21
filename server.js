@@ -820,7 +820,7 @@ async function probeLuckyJetSocketClientConstructionAtStartup(){
   try{
     const rr=await fetch(url,{headers:{Accept:"*/*",Origin:"https://1wmljx.life",Referer:"https://1wmljx.life/","User-Agent":"Mozilla/5.0"}});
     const d=await rr.text();
-    const terms=["new S(","xorigin","customerId","sessionId","app:\"frontend\"","auth:","query:"];
+    const terms=["from\"./logger","M=()","M=()=>","function M(","const M=","new S(","xorigin","customerId","sessionId","app:\"frontend\"","auth:","query:"];
     const hits=[];
     for(const term of terms){
       let p=0,n=0;
