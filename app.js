@@ -263,7 +263,7 @@ async function luckyJetBrowserProbe(){
       }
       socket=window.io("https://crash-gateway-grm-cr.gamedev-tech.cc",{
         path:"/v4/socket.io",
-        transports:["websocket"],
+        transports:["polling","websocket"],
         forceNew:true,
         reconnection:true,
         reconnectionAttempts:Infinity,
@@ -310,8 +310,10 @@ async function luckyJetBrowserProbe(){
       socket.on("connect_error",e=>{
         connected=false;
         const msg=e?.message||"неизвестная ошибка";
-        out.textContent="❌ Socket.IO connect_error: "+msg;
-        reportState("connect_error",msg);
+        const detail=[e?.description,e?.context?.status,e?.context?.statusText].filter(Boolean).join(" | ");
+        const safeMsg=(msg+(detail?" | "+detail:"")).slice(0,180);
+        out.textContent="❌ Socket.IO connect_error: "+safeMsg;
+        reportState("connect_error",safeMsg);
       });
       socket.on("disconnect",reason=>{
         connected=false;
