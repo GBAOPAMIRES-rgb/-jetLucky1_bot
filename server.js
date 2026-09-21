@@ -78,6 +78,8 @@ function validateInitData(initData){
  }
  return {ok:true,user};
 }
+globalThis.luckyJetParseStatus=null;
+
 async function fetchParseLuckyJetHistory(){
  if(!PARSE_API_KEY)return {ok:false,error:"parse_api_key_not_configured"};
  const endpoints=[
@@ -269,6 +271,13 @@ const server=http.createServer(async(req,res)=>{
   if(p.ok&&p.rounds[0])return json(res,200,{ok:true,signal:{multiplier:p.rounds[0].coefficient},source:p.source,received_at:p.fetched_at,round_id:p.rounds[0].id});
   return json(res,200,{ok:false,error:"signal_source_unavailable",message:PARSE_API_KEY?"Нет подтверждённого события Lucky Jet.":"Нет настроенного подтверждённого источника Lucky Jet. Коэффициент не генерируется и не подставляется."});
  }
+ if(url.pathname==="/api/luckyjet-source-status"&&req.method==="GET"){
+  const r=validateInitData(req.headers["x-telegram-init-data"]||"");
+  if(!r.ok)return json(res,401,{ok:false,error:r.error});
+  if(!OWNER_IDS.includes(String(r.user.id)))return json(res,403,{ok:false,error:"owner_only"});
+  const p=globalThis.luckyJetParseStatus||null;
+  return json(res,200,{ok:true,parse:p,parse_key_configured:Boolean(PARSE_API_KEY),mode:"read-only"});
+ }
  if(url.pathname==="/api/history"&&req.method==="GET"){
   const r=validateInitData(req.headers["x-telegram-init-data"]||"");
   if(!r.ok)return json(res,401,{ok:false,error:r.error});
@@ -316,8 +325,10 @@ if(url.pathname==="/telegram/webhook"){
 async function runParseStartupCheck(){
   const p=await fetchParseLuckyJetHistory();
   if(p.ok&&p.rounds?.length){
+    globalThis.luckyJetParseStatus={ok:true,source:p.source,count:p.rounds.length,latest_coefficient:p.rounds[0].coefficient,fetched_at:p.fetched_at,checked_at:new Date().toISOString()};
     console.log("Lucky Jet Parse read-only check OK "+JSON.stringify({source:p.source,count:p.rounds.length,latest_coefficient:p.rounds[0].coefficient,fetched_at:p.fetched_at}));
   }else{
+    globalThis.luckyJetParseStatus={ok:false,error:p.error||"unknown",failures:p.failures||[],configured:Boolean(PARSE_API_KEY),checked_at:new Date().toISOString()};
     console.log("Lucky Jet Parse read-only check FAILED "+JSON.stringify({error:p.error||"unknown",failures:p.failures||[],configured:Boolean(PARSE_API_KEY),key_format:PARSE_API_KEY.startsWith("pmx_")?"pmx":"other"}));
   }
 }
