@@ -883,55 +883,51 @@ function probeLuckyJetLoggerAuthHelperAtStartup(){
   }).on("error",e=>console.log("Lucky Jet logger auth helper scan",JSON.stringify({status:0,error:String(e.message||e)})));
 }
 async function probeLuckyJetOfficialHeadersAtStartup(){
+  const page="https://1wmljx.life/";
   const entry="https://1wmljx.life/resources/v1/app/assets/plugin-server-updates-dVq29KWs.js";
-  const targets=[entry];
-  const seen=new Set();
   const interesting=[
-    "/v4/socket.io","socket.io","io(","new Manager","Manager(","withCredentials",
-    "transports","transportOptions","path:","path=","auth:","auth=","extraHeaders",
-    "websocket","WebSocket","customerId","sessionId","authorization","Authorization",
-    "X-Unique-Key","X-Origin"
+    "plugin-server-updates-dVq29KWs.js","socket.io-client","/v4/socket.io",
+    "io(","new Manager","Manager(","withCredentials","transports",
+    "transportOptions","path:","auth:","extraHeaders","websocket",
+    "customerId","sessionId","authorization","Authorization","X-Unique-Key","X-Origin"
   ];
   const clean=s=>String(s||"")
     .replace(/[A-Za-z0-9_-]{40,}/g,"<redacted-long>")
     .replace(/(Bearer\\s+)[^\\s"'<>]+/gi,"$1<redacted>")
     .replace(/(cookie\\s*[:=]\\s*)[^,;}]+/gi,"$1<redacted>");
+  const hits=[];
+  const scripts=[];
   try{
-    while(targets.length && seen.size<8){
-      const url=targets.shift();
-      if(!url||seen.has(url))continue;
-      seen.add(url);
-      const rr=await fetch(url,{headers:{
-        Accept:"*/*",Origin:"https://1wmljx.life",
-        Referer:"https://1wmljx.life/", "User-Agent":"Mozilla/5.0"
-      }});
-      const d=await rr.text();
-      const linked=[];
-      for(const m of d.matchAll(/(?:from|import)\\s*["']([^"']+\\.js(?:[?#][^"']*)?)["']/g)){
-        try{
-          const u=new URL(m[1],url).toString();
-          if(u.includes("/resources/v1/app/assets/"))linked.push(u);
-        }catch{}
-      }
-      for(const u of linked.slice(0,8))if(!seen.has(u)&&targets.length<8)targets.push(u);
-      const hits=[];
-      for(const term of interesting){
-        let p=0,n=0;
-        while((p=d.indexOf(term,p))>=0&&n<4){
-          hits.push({term,index:p,snippet:clean(d.slice(Math.max(0,p-700),Math.min(d.length,p+1500)))});
-          p+=term.length;n++;
-        }
-      }
-      console.log("Lucky Jet official Socket.IO client probe",JSON.stringify({
-        url,http_status:rr.status,bytes:d.length,
-        linked_asset_count:linked.length,
-        linked_assets:linked.slice(0,8),
-        hits:hits.slice(0,60)
-      }));
+    const hr=await fetch(page,{headers:{Accept:"text/html",Origin:"https://1wmljx.life",Referer:"https://1wmljx.life/","User-Agent":"Mozilla/5.0"}});
+    const html=await hr.text();
+    for(const m of html.matchAll(/<script[^>]+src=["']([^"']+.js(?:[?#][^"']*)?)["']/gi)){
+      try{scripts.push(new URL(m[1],page).toString())}catch{}
     }
-    console.log("Lucky Jet official Socket.IO client summary",JSON.stringify({
-      assets_checked:[...seen],
-      assets_queued:targets.length
+    scripts.push(entry);
+    const unique=[...new Set(scripts)].slice(0,20);
+    for(const url of unique){
+      try{
+        const rr=await fetch(url,{headers:{Accept:"*/*",Origin:"https://1wmljx.life",Referer:page,"User-Agent":"Mozilla/5.0"}});
+        const d=await rr.text();
+        for(const term of interesting){
+          let p=0,n=0;
+          while((p=d.indexOf(term,p))>=0&&n<6){
+            hits.push({
+              url,term,index:p,
+              snippet:clean(d.slice(Math.max(0,p-900),Math.min(d.length,p+1800)))
+            });
+            p+=term.length;n++;
+          }
+        }
+      }catch(e){
+        hits.push({url,term:"fetch_error",error:String(e.message||e)});
+      }
+    }
+    console.log("Lucky Jet official Socket.IO client probe",JSON.stringify({
+      page_http_status:hr.status,
+      script_count:unique.length,
+      scripts:unique,
+      hits:hits.slice(0,100)
     }));
   }catch(e){
     console.log("Lucky Jet official Socket.IO client probe",JSON.stringify({
