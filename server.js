@@ -407,6 +407,20 @@ const server=http.createServer(async(req,res)=>{
   console.log("Lucky Jet browser bridge event",JSON.stringify({coefficient,event,receivedAt,source:"browser_socketio_read_only"}));
   return json(res,200,{ok:true,accepted:true,coefficient,event,received_at:receivedAt,source:"browser_socketio_read_only"});
  }
+ if(url.pathname==="/api/luckyjet-browser-state"&&req.method==="POST"){
+  const r=validateInitData(req.headers["x-telegram-init-data"]||"");
+  if(!r.ok)return json(res,401,{ok:false,error:r.error});
+  if(!OWNER_IDS.includes(String(r.user.id)))return json(res,403,{ok:false,error:"owner_only"});
+  let body={};try{body=await readJson(req)}catch{return json(res,400,{ok:false,error:"invalid_json"})}
+  const allowed=new Set(["connect","connect_error","disconnect","client_error"]);
+  const state=String(body.state||"");
+  if(!allowed.has(state))return json(res,400,{ok:false,error:"invalid_state"});
+  const message=String(body.message||"").replace(/[\r\n]+/g," ").slice(0,180);
+  const at=new Date().toISOString();
+  globalThis.luckyJetBrowserState={state,message,at};
+  console.log("Lucky Jet browser bridge state",JSON.stringify({state,message,at}));
+  return json(res,200,{ok:true,state,message,at});
+ }
  if(url.pathname==="/api/luckyjet-browser-status"&&req.method==="GET"){
   const r=validateInitData(req.headers["x-telegram-init-data"]||"");
   if(!r.ok)return json(res,401,{ok:false,error:r.error});
