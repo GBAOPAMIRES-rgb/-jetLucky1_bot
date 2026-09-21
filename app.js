@@ -259,7 +259,7 @@ async function luckyJetBrowserProbe(){
         try{const o=typeof data==="string"?JSON.parse(data):data; const walk=v=>{if(v&&typeof v==="object"){for(const [k,val] of Object.entries(v)){if(value===null&&/multiplier|coefficient|coef|factor|rate/i.test(k)&&Number.isFinite(Number(val)))value=Number(val); else walk(val);}}}; walk(o);}catch{}
         const m=raw.match(/([0-9]+(?:\\.[0-9]+)?)x/i);
         if(value===null&&m)value=Number(m[1]);
-        if(value!==null&&Number.isFinite(value)){got=true;out.textContent="✅ Реальное событие получено: "+value+"x\\nСобытие: "+String(event).slice(0,80);}
+        if(value!==null&&Number.isFinite(value)){got=true;out.textContent="✅ Реальное событие получено: "+value+"x\\nСобытие: "+String(event).slice(0,80);try{const rr=await api("/api/luckyjet-browser-event",{method:"POST",body:JSON.stringify({coefficient:value,event:String(event).slice(0,120)})});if(rr.ok)out.textContent+="\\n✅ Событие передано в read-only backend.";else out.textContent+="\\n⚠️ Backend не принял событие: "+(rr.message||rr.error||"ошибка");}catch(e){out.textContent+="\\n⚠️ Backend недоступен.";}}
       });
       socket.on("connect_error",e=>finish("❌ Socket.IO connect_error: "+(e?.message||"неизвестная ошибка")));
       setTimeout(()=>{if(!got)finish("⚠️ Соединение не дало коэффициент за 10 секунд. Это ещё не подтверждение источника.");},10500);
