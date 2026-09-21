@@ -841,7 +841,7 @@ function probeLuckyJetLoggerAuthHelperAtStartup(){
   const url="https://1wmljx.life/resources/v1/app/assets/logger-D8JkLHFH.js";
   https.get(url,{headers:{Accept:"*/*",Origin:"https://1wmljx.life",Referer:"https://1wmljx.life/", "User-Agent":"Mozilla/5.0"}},res=>{
     let d="";res.on("data",x=>d+=x);res.on("end",()=>{
-      const terms=["function AR(","const AR=","let AR=","AR=()=>","AR=()=>({","function M(","M=()=>","M=()=>({","export{","localStorage.getItem","sessionStorage.getItem","document.cookie","customerId","sessionId","accessToken","Authorization","ssid","SS_ID"];
+      const terms=["AR=()=>{","AR=()=>({","accessToken","Authorization","authToken","auth_token","token","ssid","SS_ID","customerId","sessionId","cookie","document.cookie","localStorage","sessionStorage","fetch(","XMLHttpRequest","socket.io","io(","connect(","query:","headers:","withCredentials"];
       const hits=[];
       for(const term of terms){let p=0,n=0;while((p=d.indexOf(term,p))>=0&&n<3){hits.push({term,snippet:d.slice(Math.max(0,p-500),Math.min(d.length,p+1200)).replace(/[A-Za-z0-9_-]{40,}/g,"<redacted-long>")});p+=term.length;n++;}}
       console.log("Lucky Jet logger auth helper scan",JSON.stringify({status:res.statusCode||0,bytes:d.length,hits:hits.slice(0,30)}));
