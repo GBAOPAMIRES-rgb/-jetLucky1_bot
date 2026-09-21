@@ -164,8 +164,9 @@ async function adminScreen(type){
     const bs=status?.state||null;
     const tgOk=!!tg?.initData;
     const official=bs?.state==="connect"||bs?.state==="connect_error"||bs?.state==="disconnect";
-    const browser=bs?.state==="connect"?"ДОСТУПНА":bs?.state==="connect_error"?"НЕТ — ошибка":"НЕТ ДАННЫХ";
-    const socket=bs?.state==="connect"?"УСТАНОВЛЕН":bs?.state==="connect_error"?"ОТКЛОНЁН":"НЕТ ДАННЫХ";
+    const live=Boolean(status?.connected);
+    const browser=live?"ДОСТУПНА":bs?.state==="connect_error"?"НЕТ — ошибка":"НЕТ ДАННЫХ";
+    const socket=live?"УСТАНОВЛЕН":bs?.state==="connect_error"?"ОТКЛОНЁН":"НЕТ ДАННЫХ";
     const event=status?.has_event?"ПОЛУЧЕНО":"НЕТ";
     const coeff=status?.has_event&&typeof status.latest_coefficient==="number"?String(status.latest_coefficient)+"x":"НЕТ";
     setScreen("Диагностика",center("🩺 Диагностика","Пошаговая read-only проверка реального источника Lucky Jet.",
@@ -184,7 +185,7 @@ async function adminScreen(type){
       telegram:["Telegram WebApp",tgOk?"OK":"НЕТ",tgOk?"Telegram initData получены для служебной проверки.":"Mini App не получил Telegram initData."],
       official:["Официальная страница",official?"ПРОВЕРЕНА":"НЕТ ДАННЫХ",official?"Browser bridge сообщил состояние официального контекста.":"Mini App сам по себе не является официальным контекстом 1wmljx.life."],
       browser:["Браузерная сессия",browser,bs?.message?String(bs.message):"Состояние browser bridge пока не подтверждено."],
-      socket:["Socket.IO transport",socket,socket==="УСТАНОВЛЕН"?"Socket.IO сообщил успешное соединение.":bs?.message||"Соединение с transport не подтверждено."],
+      socket:["Socket.IO transport",socket,live?"Socket.IO сообщил актуальное соединение за последние 30 секунд.":bs?.message||"Актуальное соединение с transport не подтверждено."],
       event:["Реальное событие",event,status?.has_event?"Получено подтверждённое событие browser bridge.":"Свежего подтверждённого события нет."],
       coefficient:["Коэффициент",coeff,status?.has_event?"Значение получено из реального события и не генерировалось.":"Значение отсутствует; подстановка запрещена."]
     };
