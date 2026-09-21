@@ -254,6 +254,26 @@ const server=http.createServer(async(req,res)=>{
   if(!LUCKYJET_SSID)return json(res,200,{ok:false,configured:false,source:"luckyjet_ssid",error:"luckyjet_ssid_not_configured",message:"LUCKYJET_SSID не настроен. Внешнее подключение не выполнялось."});
   return json(res,200,{ok:true,configured:true,source:"luckyjet_ssid",ssid_present:true,ssid_length:LUCKYJET_SSID.length,external_test:false,message:"LUCKYJET_SSID получен сервером. Значение не раскрывается; внешнее подключение пока не выполняется."});
  }
+ if(url.pathname==="/api/luckyjet-readonly-check"&&req.method==="GET"){
+  const r=validateInitData(req.headers["x-telegram-init-data"]||"");
+  if(!r.ok)return json(res,401,{ok:false,error:r.error});
+  if(!OWNER_IDS.includes(String(r.user.id)))return json(res,403,{ok:false,error:"owner_only"});
+  const browser=globalThis.luckyJetBrowserLastEvent||null;
+  const browserState=globalThis.luckyJetBrowserState||null;
+  if(browser&&Date.now()-Date.parse(browser.receivedAt)<15000)return json(res,200,{ok:true,source:"official_browser_bridge_read_only",latest_coefficient:browser.coefficient,event:browser.event,received_at:browser.receivedAt,state:browserState});
+  if(LUCKYJET_CUSTOMER_ID&&LUCKYJET_SESSION_ID){
+    try{
+      const rr=await fetch("https://crash-gateway-grm-cr.gamedev-tech.cc/history",{headers:{"customer-id":LUCKYJET_CUSTOMER_ID,"session-id":LUCKYJET_SESSION_ID,"origin":"https://1play.gamedev-tech.cc","referer":"https://1play.gamedev-tech.cc/","accept":"application/json"}});
+      const raw=await rr.json().catch(()=>null);
+      const rounds=Array.isArray(raw?.rounds)?raw.rounds:Array.isArray(raw?.data?.rounds)?raw.data.rounds:Array.isArray(raw)?raw:[];
+      const first=rounds[0]||null;
+      const coefficient=first?.top_coefficient??first?.coefficient??first?.multiplier??null;
+      if(rr.ok&&typeof coefficient==="number")return json(res,200,{ok:true,source:"configured_read_only_history",latest_coefficient:coefficient,latest_round_id:first?.round_id||first?.id||null,count:rounds.length,received_at:new Date().toISOString()});
+      return json(res,200,{ok:false,source:"configured_read_only_history",error:"history_no_confirmed_coefficient",http_status:rr.status,count:rounds.length,state:browserState});
+    }catch(e){return json(res,200,{ok:false,source:"configured_read_only_history",error:"history_request_failed",message:String(e.message||e),state:browserState})}
+  }
+  return json(res,200,{ok:false,source:"read_only_server_check",error:"no_confirmed_source",message:"Нет свежего события browser bridge и серверный history source не настроен. Коэффициент не генерируется и не подставляется.",state:browserState});
+ }
  if(url.pathname==="/api/luckyjet-gateway-test"&&req.method==="GET"){
   const r=validateInitData(req.headers["x-telegram-init-data"]||"");
   if(!r.ok)return json(res,401,{ok:false,error:r.error});
