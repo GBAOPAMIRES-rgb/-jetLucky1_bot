@@ -242,31 +242,80 @@ async function luckyJetBrowserProbe(){
   const out=document.createElement("div");
   out.className="signal-state"; out.style.whiteSpace="pre-line";
   const host=$("screen"); if(!host)return;
-  const btn=document.createElement("button"); btn.className="secondary-btn"; btn.textContent="📡 Проверить браузерный поток Lucky Jet";
-  const box=document.createElement("div"); box.className="support-card"; box.innerHTML="<b>Read-only browser bridge</b><br><small>Проверка использует только текущую браузерную сессию. SSID и cookies не читаются и не отправляются.</small>";
+  const box=document.createElement("div"); box.className="support-card";
+  box.innerHTML="<b>Read-only browser bridge</b><br><small>Используется только текущая браузерная сессия. SSID, cookies и токены не читаются и не отправляются.</small>";
+  const btn=document.createElement("button"); btn.className="secondary-btn"; btn.textContent="📡 Подключить браузерный поток Lucky Jet";
   box.appendChild(btn); box.appendChild(out); host.querySelector(".screen-body")?.appendChild(box);
+
+  let socket=null, connected=false, sentCount=0;
+
   btn.onclick=async()=>{
+    if(socket){try{socket.close()}catch{} socket=null; connected=false; btn.textContent="📡 Подключить браузерный поток Lucky Jet"; out.textContent="Соединение закрыто."; return;}
     btn.disabled=true; out.textContent="Подключаем read-only Socket.IO…";
     try{
-      if(!window.io){await new Promise((resolve,reject)=>{const sc=document.createElement("script");sc.src="https://cdn.socket.io/4.8.1/socket.io.min.js";sc.onload=resolve;sc.onerror=()=>reject(new Error("Не удалось загрузить Socket.IO client"));document.head.appendChild(sc);});}
-      const socket=window.io("https://crash-gateway-grm-cr.gamedev-tech.cc",{path:"/v4/socket.io",transports:["websocket"],forceNew:true,reconnection:false,withCredentials:true,query:{Language:"en",xorigin:location.host,app:"frontend"},timeout:10000});
-      let got=false;
-      const finish=(msg)=>{if(!got){got=true;out.textContent=msg;}setTimeout(()=>{try{socket.close()}catch{};btn.disabled=false;},500);};
-      socket.on("connect",()=>{out.textContent="✅ Socket.IO connect подтверждён. Ждём события коэффициента…";});
-      socket.onAny((event,data)=>{
+      if(!window.io){
+        await new Promise((resolve,reject)=>{
+          const sc=document.createElement("script");
+          sc.src="https://cdn.socket.io/4.8.1/socket.io.min.js";
+          sc.onload=resolve; sc.onerror=()=>reject(new Error("Не удалось загрузить Socket.IO client"));
+          document.head.appendChild(sc);
+        });
+      }
+      socket=window.io("https://crash-gateway-grm-cr.gamedev-tech.cc",{
+        path:"/v4/socket.io",
+        transports:["websocket"],
+        forceNew:true,
+        reconnection:true,
+        reconnectionAttempts:Infinity,
+        reconnectionDelay:1000,
+        withCredentials:true,
+        query:{Language:"en",xorigin:location.host,app:"frontend"},
+        timeout:10000
+      });
+      btn.disabled=false; btn.textContent="⏹️ Остановить браузерный поток";
+
+      socket.on("connect",()=>{
+        connected=true;
+        out.textContent="✅ Socket.IO соединение установлено. Ожидаем реальные события…";
+      });
+      socket.onAny(async(event,data)=>{
         const raw=typeof data==="string"?data:JSON.stringify(data||{});
         let value=null;
-        try{const o=typeof data==="string"?JSON.parse(data):data; const walk=v=>{if(v&&typeof v==="object"){for(const [k,val] of Object.entries(v)){if(value===null&&/multiplier|coefficient|coef|factor|rate/i.test(k)&&Number.isFinite(Number(val)))value=Number(val); else walk(val);}}}; walk(o);}catch{}
-        const m=raw.match(/([0-9]+(?:\\.[0-9]+)?)x/i);
+        try{
+          const o=typeof data==="string"?JSON.parse(data):data;
+          const walk=v=>{
+            if(v&&typeof v==="object"){
+              for(const [k,val] of Object.entries(v)){
+                if(value===null&&/multiplier|coefficient|coef|factor|rate/i.test(k)&&Number.isFinite(Number(val))) value=Number(val);
+                else walk(val);
+              }
+            }
+          };
+          walk(o);
+        }catch{}
+        const m=raw.match(/([0-9]+(?:\.[0-9]+)?)x/i);
         if(value===null&&m)value=Number(m[1]);
-        if(value!==null&&Number.isFinite(value)){got=true;out.textContent="✅ Реальное событие получено: "+value+"x\\nСобытие: "+String(event).slice(0,80);try{const rr=await api("/api/luckyjet-browser-event",{method:"POST",body:JSON.stringify({coefficient:value,event:String(event).slice(0,120)})});if(rr.ok)out.textContent+="\\n✅ Событие передано в read-only backend.";else out.textContent+="\\n⚠️ Backend не принял событие: "+(rr.message||rr.error||"ошибка");}catch(e){out.textContent+="\\n⚠️ Backend недоступен.";}}
+        if(value!==null&&Number.isFinite(value)&&value>=1&&value<=100000){
+          out.textContent="✅ Реальное событие: "+value+"x\nСобытие: "+String(event).slice(0,80)+"\nПередано событий: "+(++sentCount);
+          try{
+            const rr=await api("/api/luckyjet-browser-event",{method:"POST",body:JSON.stringify({coefficient:value,event:String(event).slice(0,120)})});
+            if(!rr.ok)out.textContent+="\n⚠️ Backend не принял событие: "+(rr.message||rr.error||"ошибка");
+          }catch{out.textContent+="\n⚠️ Backend недоступен.";}
+        }
       });
-      socket.on("connect_error",e=>finish("❌ Socket.IO connect_error: "+(e?.message||"неизвестная ошибка")));
-      setTimeout(()=>{if(!got)finish("⚠️ Соединение не дало коэффициент за 10 секунд. Это ещё не подтверждение источника.");},10500);
-    }catch(e){out.textContent="❌ "+(e?.message||String(e));btn.disabled=false;}
+      socket.on("connect_error",e=>{
+        connected=false;
+        out.textContent="❌ Socket.IO connect_error: "+(e?.message||"неизвестная ошибка");
+      });
+      socket.on("disconnect",reason=>{
+        connected=false;
+        if(reason!=="io client disconnect")out.textContent="⚠️ Socket.IO отключён: "+String(reason);
+      });
+    }catch(e){
+      out.textContent="❌ "+(e?.message||String(e)); btn.disabled=false; socket=null;
+    }
   };
 }
-
 async function init(){
   const c=await api("/api/config");REGISTER_URL=c.registrationUrl||"#";
   const r=await api("/api/access");
