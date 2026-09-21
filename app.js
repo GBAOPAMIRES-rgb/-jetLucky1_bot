@@ -274,9 +274,13 @@ async function luckyJetBrowserProbe(){
       });
       btn.disabled=false; btn.textContent="⏹️ Остановить браузерный поток";
 
+      const reportState=async(state,message)=>{
+        try{await api("/api/luckyjet-browser-state",{method:"POST",body:JSON.stringify({state,message:String(message||"").slice(0,180)})});}catch{}
+      };
       socket.on("connect",()=>{
         connected=true;
         out.textContent="✅ Socket.IO соединение установлено. Ожидаем реальные события…";
+        reportState("connect","Socket.IO connected");
       });
       socket.onAny(async(event,data)=>{
         const raw=typeof data==="string"?data:JSON.stringify(data||{});
@@ -305,11 +309,18 @@ async function luckyJetBrowserProbe(){
       });
       socket.on("connect_error",e=>{
         connected=false;
-        out.textContent="❌ Socket.IO connect_error: "+(e?.message||"неизвестная ошибка");
+        const msg=e?.message||"неизвестная ошибка";
+        out.textContent="❌ Socket.IO connect_error: "+msg;
+        reportState("connect_error",msg);
       });
       socket.on("disconnect",reason=>{
         connected=false;
-        if(reason!=="io client disconnect")out.textContent="⚠️ Socket.IO отключён: "+String(reason);
+        if(reason!=="io client disconnect"){
+          out.textContent="⚠️ Socket.IO отключён: "+String(reason);
+          reportState("disconnect",String(reason));
+        }else{
+          reportState("disconnect","io client disconnect");
+        }
       });
     }catch(e){
       out.textContent="❌ "+(e?.message||String(e)); btn.disabled=false; socket=null;
