@@ -180,7 +180,7 @@ async function adminScreen(type){
     };
     const status=await api("/api/luckyjet-browser-status");
     const bs=status?.state||null;
-    setStage(2,location.hostname==="1wmljx.onrender.com"?"ОТКРЫТА":"ОТДЕЛЬНО");
+    setStage(2,bs?.state==="connect"||bs?.state==="connect_error"||bs?.state==="disconnect"?"ПРОВЕРЕНА":"НЕТ ДАННЫХ");
     setStage(3,bs?.state==="connect"?"ДОСТУПНА":bs?.state==="connect_error"?"НЕТ":"НЕТ ДАННЫХ");
     setStage(4,bs?.state==="connect"?"УСТАНОВЛЕН":"НЕТ");
     if(status?.has_event){
