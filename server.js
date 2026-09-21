@@ -481,7 +481,8 @@ const server=http.createServer(async(req,res)=>{
   if(!r.ok)return json(res,401,{ok:false,error:r.error});
   if(!OWNER_IDS.includes(String(r.user.id)))return json(res,403,{ok:false,error:"owner_only"});
   const e=globalThis.luckyJetBrowserLastEvent||null;
-  return json(res,200,{ok:true,connected:Boolean(e),latest_coefficient:e?.coefficient??null,event:e?.event??null,received_at:e?.receivedAt??null,source:e?.source??null});
+  const s=globalThis.luckyJetBrowserState||null;
+  return json(res,200,{ok:true,connected:Boolean(e),has_event:Boolean(e),latest_coefficient:e?.coefficient??null,event:e?.event??null,received_at:e?.receivedAt??null,source:e?.source??null,state:s});
  }
  if(url.pathname==="/api/signal"&&req.method==="GET"){
   const r=validateInitData(req.headers["x-telegram-init-data"]||"");
