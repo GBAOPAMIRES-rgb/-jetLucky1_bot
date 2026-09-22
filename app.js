@@ -206,9 +206,10 @@ async function adminScreen(type){
       '<button class="data-row diag-row" data-diag="socket"><span>4. Socket.IO transport</span><b>'+socket+'</b><em>›</em></button>'+
       '<button class="data-row diag-row" data-diag="event"><span>5. Реальное событие</span><b>'+event+'</b><em>›</em></button>'+
       '<button class="data-row diag-row" data-diag="coefficient"><span>6. Коэффициент</span><b>'+coeff+'</b><em>›</em></button><button class="data-row diag-row" data-diag="source"><span>7. Read-only источник</span><b>'+(ps?.ok?"ПОДТВЕРЖДЁН":"ОТКЛОНЁН")+'</b><em>›</em></button>'+
+      '<button type="button" class="data-row diag-row bridge-token-row" id="getBridgeToken"><span class="bridge-token-icon">🔑</span><div><b>Получить временный bridge-токен</b><small>Сгенерировать токен для browser bridge</small></div><em>›</em></button>'+
       '</div>'+
       '<div id="luckyJetDiagDetail" class="support-card diag-detail"><b>Нажмите на любой пункт</b><p class="muted">Здесь откроется подробная информация по выбранному этапу. Секреты, cookies и SSID не показываются.</p></div>'+
-      '<button type="button" class="secondary-btn" id="getBridgeToken">🔑 Получить временный bridge-токен</button><div id="bridgeTokenBox" class="signal-state" style="word-break:break-all"></div><div id="luckyJetDiagMsg" class="signal-state">'+(status?.has_event?"✅ Реальное read-only событие получено.":ps?.ok?"✅ Read-only источник подтверждён; браузерное событие пока не получено.":"ℹ️ Подтверждённого реального события пока нет. Коэффициент не генерируется и не подставляется.")+'</div>'));
+      '<div id="bridgeTokenBox" class="signal-state" style="word-break:break-all"></div><div id="luckyJetDiagMsg" class="signal-state">'+(status?.has_event?"✅ Реальное read-only событие получено.":ps?.ok?"✅ Read-only источник подтверждён; браузерное событие пока не получено.":"ℹ️ Подтверждённого реального события пока нет. Коэффициент не генерируется и не подставляется.")+'</div>'));
     const tokenBtn=$("getBridgeToken"); if(tokenBtn){ tokenBtn.onclick=requestBridgeToken; }
     const detail=$("luckyJetDiagDetail");
     const details={
