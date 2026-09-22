@@ -192,7 +192,7 @@ const server=http.createServer(async(req,res)=>{
   luckyJetBridgeToken={value:crypto.randomBytes(24).toString("hex"),expiresAt:Date.now()+10*60*1000};
   return json(res,200,{ok:true,token:luckyJetBridgeToken.value,expires_at:new Date(luckyJetBridgeToken.expiresAt).toISOString(),origin:"https://1wmljx.life",read_only:true});
  }
- if((url.pathname==="/api/luckyjet-browser-event-bridge"||url.pathname==="/api/luckyjet-browser-state-bridge")&&(req.method==="OPTIONS")){bridgeCors(res);res.writeHead(204);return res.end();}
+ if((url.pathname==="/api/luckyjet-browser-event-bridge"||url.pathname==="/api/luckyjet-browser-state-bridge"||url.pathname==="/api/luckyjet-browser-ping-bridge")&&(req.method==="OPTIONS")){bridgeCors(res);res.writeHead(204);return res.end();}
  if(url.pathname==="/api/luckyjet-browser-ping-bridge"&&req.method==="POST"){
   bridgeCors(res);
   if(req.headers.origin!=="https://1wmljx.life"||!bridgeTokenValid(req.headers["x-luckyjet-bridge-token"]))return json(res,403,{ok:false,error:"bridge_token_invalid"});
