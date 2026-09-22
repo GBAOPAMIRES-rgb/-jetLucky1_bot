@@ -384,7 +384,7 @@ async function runParseStartupCheck(){
     console.log("Lucky Jet Parse read-only check FAILED "+JSON.stringify({error:p.error||"unknown",failures:p.failures||[],configured:Boolean(PARSE_API_KEY),key_format:PARSE_API_KEY.startsWith("pmx_")?"pmx":"other"}));
   }
 }
-server.listen(PORT,async()=>{
+server.listen(PORT,"0.0.0.0",async()=>{
   console.log("jetLucky1 server listening on "+PORT+" (read-only source mode)");
   await configureTelegram();
   await runParseStartupCheck();
