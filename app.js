@@ -6,22 +6,33 @@ const $=id=>document.getElementById(id);
 const user=tg?.initDataUnsafe?.user||null;
 const userId=String(user?.id||"");
 
-// Надёжный обработчик bridge-кнопки: делегирование работает даже после перерисовки экрана.
-document.addEventListener("click",async(event)=>{
-  const btn=event.target?.closest?.("#getBridgeToken");
-  if(!btn)return;
+async function requestBridgeToken(){
+  const btn=document.getElementById("getBridgeToken");
   const box=document.getElementById("bridgeTokenBox");
-  if(!box||btn.dataset.busy==="1")return;
-  btn.dataset.busy="1"; btn.disabled=true; box.textContent="Получаем временный токен…";
+  const msg=document.getElementById("luckyJetDiagMsg");
+  if(!btn||!box||btn.dataset.busy==="1")return;
+  btn.dataset.busy="1";
+  btn.disabled=true;
+  box.textContent="Получаем временный токен…";
+  if(msg)msg.textContent="⏳ Запрос отправляется на Render…";
   try{
     const tr=await api("/api/luckyjet-bridge-token");
-    box.textContent=tr?.ok&&tr?.token?tr.token:(tr?.message||tr?.error||"Сервер не вернул токен");
+    if(tr?.ok&&tr?.token){
+      box.textContent=tr.token;
+      if(msg)msg.textContent="✅ Временный токен получен. Не отправляйте его в чат.";
+    }else{
+      box.textContent=tr?.message||tr?.error||"Сервер не вернул токен";
+      if(msg)msg.textContent="❌ Сервер отклонил запрос: "+(tr?.message||tr?.error||"неизвестная ошибка");
+    }
   }catch(e){
     box.textContent="Ошибка запроса: "+String(e?.message||e);
+    if(msg)msg.textContent="❌ Ошибка соединения с Render.";
   }finally{
-    btn.dataset.busy="0"; btn.disabled=false;
+    btn.dataset.busy="0";
+    btn.disabled=false;
   }
-});
+}
+window.requestBridgeToken=requestBridgeToken;
 
 let role=userId&&OWNER_IDS.has(userId)?"owner":"user";
 let hasAccess=true,registered=false,restricted=false,onewinId="";
@@ -197,8 +208,8 @@ async function adminScreen(type){
       '<button class="data-row diag-row" data-diag="coefficient"><span>6. Коэффициент</span><b>'+coeff+'</b><em>›</em></button><button class="data-row diag-row" data-diag="source"><span>7. Read-only источник</span><b>'+(ps?.ok?"ПОДТВЕРЖДЁН":"ОТКЛОНЁН")+'</b><em>›</em></button>'+
       '</div>'+
       '<div id="luckyJetDiagDetail" class="support-card diag-detail"><b>Нажмите на любой пункт</b><p class="muted">Здесь откроется подробная информация по выбранному этапу. Секреты, cookies и SSID не показываются.</p></div>'+
-      '<button class="secondary-btn" id="getBridgeToken">🔑 Получить временный bridge-токен</button><div id="bridgeTokenBox" class="signal-state" style="word-break:break-all"></div><div id="luckyJetDiagMsg" class="signal-state">'+(status?.has_event?"✅ Реальное read-only событие получено.":ps?.ok?"✅ Read-only источник подтверждён; браузерное событие пока не получено.":"ℹ️ Подтверждённого реального события пока нет. Коэффициент не генерируется и не подставляется.")+'</div>'));
-    const tokenBtn=$("getBridgeToken"); const tokenBox=$("bridgeTokenBox"); if(tokenBtn){ tokenBtn.onclick=async()=>{ tokenBtn.disabled=true; tokenBox.textContent="Получаем временный токен…"; const tr=await api("/api/luckyjet-bridge-token"); tokenBox.textContent=tr.ok?tr.token:(tr.message||tr.error||"Не удалось получить токен"); tokenBtn.disabled=false; }; }
+      '<button type="button" class="secondary-btn" id="getBridgeToken">🔑 Получить временный bridge-токен</button><div id="bridgeTokenBox" class="signal-state" style="word-break:break-all"></div><div id="luckyJetDiagMsg" class="signal-state">'+(status?.has_event?"✅ Реальное read-only событие получено.":ps?.ok?"✅ Read-only источник подтверждён; браузерное событие пока не получено.":"ℹ️ Подтверждённого реального события пока нет. Коэффициент не генерируется и не подставляется.")+'</div>'));
+    const tokenBtn=$("getBridgeToken"); if(tokenBtn){ tokenBtn.onclick=requestBridgeToken; }
     const detail=$("luckyJetDiagDetail");
     const details={
       telegram:["Telegram WebApp",tgOk?"OK":"НЕТ",tgOk?"Telegram initData получены для служебной проверки.":"Mini App не получил Telegram initData."],
