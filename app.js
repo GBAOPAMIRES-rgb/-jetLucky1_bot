@@ -181,7 +181,8 @@ async function adminScreen(type){
       '</div>'+
       '<div id="luckyJetDiagDetail" class="support-card diag-detail"><b>Нажмите на любой пункт</b><p class="muted">Здесь откроется подробная информация по выбранному этапу. Секреты, cookies и SSID не показываются.</p></div>'+
       '<button class="secondary-btn" id="getBridgeToken">🔑 Получить временный bridge-токен</button><div id="bridgeTokenBox" class="signal-state" style="word-break:break-all"></div><div id="luckyJetDiagMsg" class="signal-state">'+(status?.has_event?"✅ Реальное read-only событие получено.":ps?.ok?"✅ Read-only источник подтверждён; браузерное событие пока не получено.":"ℹ️ Подтверждённого реального события пока нет. Коэффициент не генерируется и не подставляется.")+'</div>'));
-    const tokenBtn=$("getBridgeToken"); const tokenBox=$("bridgeTokenBox"); if(tokenBtn){ tokenBtn.onclick=async()=>{ tokenBtn.disabled=true; tokenBox.textContent="Получаем временный токен…"; const tr=await api("/api/luckyjet-bridge-token"); tokenBox.textContent=tr.ok?tr.token:(tr.message||tr.error||"Не удалось получить токен"); tokenBtn.disabled=false; }; }\n    const detail=$("luckyJetDiagDetail");
+    const tokenBtn=$("getBridgeToken"); const tokenBox=$("bridgeTokenBox"); if(tokenBtn){ tokenBtn.onclick=async()=>{ tokenBtn.disabled=true; tokenBox.textContent="Получаем временный токен…"; const tr=await api("/api/luckyjet-bridge-token"); tokenBox.textContent=tr.ok?tr.token:(tr.message||tr.error||"Не удалось получить токен"); tokenBtn.disabled=false; }; }
+    const detail=$("luckyJetDiagDetail");
     const details={
       telegram:["Telegram WebApp",tgOk?"OK":"НЕТ",tgOk?"Telegram initData получены для служебной проверки.":"Mini App не получил Telegram initData."],
       official:["Официальная страница",official?"ПРОВЕРЕНА":"НЕТ ДАННЫХ",official?"Browser bridge сообщил состояние официального контекста.":"Mini App сам по себе не является официальным контекстом 1wmljx.life."],
