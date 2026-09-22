@@ -249,13 +249,14 @@ const server=http.createServer(async(req,res)=>{
  if(url.pathname==="/api/luckyjet-browser-shortcut-event"&&req.method==="POST"){
   bridgeCors(res);
   if(req.headers.origin!=="https://1wmljx.life")return json(res,403,{ok:false,error:"bridge_origin_invalid"});
-  let body={};try{body=await readJson(req)}catch{return json(res,400,{ok:false,error:"invalid_json"})}
+  let raw="";try{raw=await new Promise((resolve,reject)=>{let b="";req.on("data",c=>{b+=c;if(b.length>20000){reject(new Error("body_too_large"));try{req.destroy()}catch{}}});req.on("end",()=>resolve(b));req.on("error",reject)})}catch{return json(res,400,{ok:false,error:"body_read_failed"})}
+  let body={};try{body=JSON.parse(raw||"{}")}catch{return json(res,400,{ok:false,error:"invalid_json"})}
   if(!bridgeTokenValid(req.headers["x-luckyjet-bridge-token"]||body.token))return json(res,403,{ok:false,error:"bridge_token_invalid"});
   const coefficient=Number(body.coefficient);
   if(!Number.isFinite(coefficient)||coefficient<1||coefficient>100000)return json(res,400,{ok:false,error:"invalid_coefficient"});
   const event=String(body.event||"").replace(/[\r\n]+/g," ").slice(0,120);
   const receivedAt=new Date().toISOString();
-  globalThis.luckyJetBrowserLastEvent={coefficient,event,receivedAt,source:"official_browser_bridge_read_only"};
+  globalThis.luckyJetBrowserLastEvent={coefficient,event,receivedAt,source:"official_browser_shortcut_read_only"};
   console.log("Lucky Jet official browser shortcut event",JSON.stringify({coefficient,event,receivedAt,source:"official_browser_shortcut_read_only"}));
   return json(res,200,{ok:true,accepted:true,coefficient,event,received_at:receivedAt,source:"official_browser_shortcut_read_only"});
  }
