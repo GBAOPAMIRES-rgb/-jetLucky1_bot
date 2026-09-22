@@ -193,6 +193,14 @@ const server=http.createServer(async(req,res)=>{
   return json(res,200,{ok:true,token:luckyJetBridgeToken.value,expires_at:new Date(luckyJetBridgeToken.expiresAt).toISOString(),origin:"https://1wmljx.life",read_only:true});
  }
  if((url.pathname==="/api/luckyjet-browser-event-bridge"||url.pathname==="/api/luckyjet-browser-state-bridge")&&(req.method==="OPTIONS")){bridgeCors(res);res.writeHead(204);return res.end();}
+ if(url.pathname==="/api/luckyjet-browser-ping-bridge"&&req.method==="POST"){
+  bridgeCors(res);
+  if(req.headers.origin!=="https://1wmljx.life"||!bridgeTokenValid(req.headers["x-luckyjet-bridge-token"]))return json(res,403,{ok:false,error:"bridge_token_invalid"});
+  const at=new Date().toISOString();
+  globalThis.luckyJetBrowserState={state:"connect",message:"bridge_script_started",at};
+  console.log("Lucky Jet official browser bridge ping",JSON.stringify({at,source:"official_browser_bridge_read_only"}));
+  return json(res,200,{ok:true,ping:true,at,source:"official_browser_bridge_read_only"});
+ }
  if(url.pathname==="/api/luckyjet-browser-event-bridge"&&req.method==="POST"){
   bridgeCors(res);
   if(req.headers.origin!=="https://1wmljx.life"||!bridgeTokenValid(req.headers["x-luckyjet-bridge-token"]))return json(res,403,{ok:false,error:"bridge_token_invalid"});
