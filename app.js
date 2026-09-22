@@ -18,8 +18,10 @@ async function requestBridgeToken(){
   try{
     const tr=await api("/api/luckyjet-bridge-token");
     if(tr?.ok&&tr?.token){
-      box.textContent=tr.token;
-      if(msg)msg.textContent="✅ Временный токен получен. Не отправляйте его в чат.";
+      box.innerHTML=`<div class="bridge-token-result"><b>✅ Временный bridge-токен получен</b><code id="bridgeTokenValue">${escapeHtml(tr.token)}</code><button type="button" class="secondary-btn bridge-copy-btn" id="copyBridgeToken">📋 Скопировать токен</button><small>Токен временный. Не отправляйте его в чат.</small></div>`;
+      const copyBtn=document.getElementById("copyBridgeToken");
+      if(copyBtn)copyBtn.onclick=async()=>{try{await navigator.clipboard.writeText(tr.token);copyBtn.textContent="✅ Скопировано";setTimeout(()=>copyBtn.textContent="📋 Скопировать токен",1800)}catch{copyBtn.textContent="Скопируйте токен вручную"}};
+      if(msg)msg.textContent="✅ Временный токен получен. Он показан под пунктом диагностики.";
     }else{
       box.textContent=tr?.message||tr?.error||"Сервер не вернул токен";
       if(msg)msg.textContent="❌ Сервер отклонил запрос: "+(tr?.message||tr?.error||"неизвестная ошибка");
