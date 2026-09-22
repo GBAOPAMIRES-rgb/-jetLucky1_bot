@@ -6,6 +6,23 @@ const $=id=>document.getElementById(id);
 const user=tg?.initDataUnsafe?.user||null;
 const userId=String(user?.id||"");
 
+// Надёжный обработчик bridge-кнопки: делегирование работает даже после перерисовки экрана.
+document.addEventListener("click",async(event)=>{
+  const btn=event.target?.closest?.("#getBridgeToken");
+  if(!btn)return;
+  const box=document.getElementById("bridgeTokenBox");
+  if(!box||btn.dataset.busy==="1")return;
+  btn.dataset.busy="1"; btn.disabled=true; box.textContent="Получаем временный токен…";
+  try{
+    const tr=await api("/api/luckyjet-bridge-token");
+    box.textContent=tr?.ok&&tr?.token?tr.token:(tr?.message||tr?.error||"Сервер не вернул токен");
+  }catch(e){
+    box.textContent="Ошибка запроса: "+String(e?.message||e);
+  }finally{
+    btn.dataset.busy="0"; btn.disabled=false;
+  }
+});
+
 let role=userId&&OWNER_IDS.has(userId)?"owner":"user";
 let hasAccess=true,registered=false,restricted=false,onewinId="";
 let currentSection="home";
