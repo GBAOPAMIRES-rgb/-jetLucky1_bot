@@ -225,7 +225,7 @@ const server=http.createServer(async(req,res)=>{
   luckyJetBridgeToken={value:crypto.randomBytes(24).toString("hex"),expiresAt:Date.now()+10*60*1000};
   return json(res,200,{ok:true,token:luckyJetBridgeToken.value,expires_at:new Date(luckyJetBridgeToken.expiresAt).toISOString(),origin:"https://1wmljx.life",read_only:true});
  }
- if((url.pathname==="/api/luckyjet-browser-event-bridge"||url.pathname==="/api/luckyjet-browser-state-bridge"||url.pathname==="/api/luckyjet-browser-ping-bridge")&&(req.method==="OPTIONS")){bridgeCors(res);res.writeHead(204);return res.end();}
+ if((url.pathname==="/api/luckyjet-browser-event-bridge"||url.pathname==="/api/luckyjet-browser-state-bridge"||url.pathname==="/api/luckyjet-browser-ping-bridge"||url.pathname==="/api/luckyjet-browser-shortcut-event")&&(req.method==="OPTIONS")){bridgeCors(res);res.writeHead(204);return res.end();}
  if(url.pathname==="/api/luckyjet-browser-ping-bridge"&&req.method==="POST"){
   bridgeCors(res);
   if(req.headers.origin!=="https://1wmljx.life"||!bridgeTokenValid(req.headers["x-luckyjet-bridge-token"]))return json(res,403,{ok:false,error:"bridge_token_invalid"});
@@ -247,13 +247,15 @@ const server=http.createServer(async(req,res)=>{
   return json(res,200,{ok:true,accepted:true,coefficient,event,received_at:receivedAt,source:"official_browser_bridge_read_only"});
  }
  if(url.pathname==="/api/luckyjet-browser-shortcut-event"&&req.method==="POST"){
+  bridgeCors(res);
+  if(req.headers.origin!=="https://1wmljx.life")return json(res,403,{ok:false,error:"bridge_origin_invalid"});
   let body={};try{body=await readJson(req)}catch{return json(res,400,{ok:false,error:"invalid_json"})}
-  if(!bridgeTokenValid(body.token))return json(res,403,{ok:false,error:"bridge_token_invalid"});
+  if(!bridgeTokenValid(req.headers["x-luckyjet-bridge-token"]||body.token))return json(res,403,{ok:false,error:"bridge_token_invalid"});
   const coefficient=Number(body.coefficient);
   if(!Number.isFinite(coefficient)||coefficient<1||coefficient>100000)return json(res,400,{ok:false,error:"invalid_coefficient"});
   const event=String(body.event||"").replace(/[\r\n]+/g," ").slice(0,120);
   const receivedAt=new Date().toISOString();
-  globalThis.luckyJetBrowserLastEvent={coefficient,event,receivedAt,source:"official_browser_shortcut_read_only"};
+  globalThis.luckyJetBrowserLastEvent={coefficient,event,receivedAt,source:"official_browser_bridge_read_only"};
   console.log("Lucky Jet official browser shortcut event",JSON.stringify({coefficient,event,receivedAt,source:"official_browser_shortcut_read_only"}));
   return json(res,200,{ok:true,accepted:true,coefficient,event,received_at:receivedAt,source:"official_browser_shortcut_read_only"});
  }
