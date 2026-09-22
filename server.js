@@ -14,6 +14,9 @@ const WEBHOOK_URL=process.env.WEBHOOK_URL||"https://jetlucky1.onrender.com/teleg
 const PARSE_API_KEY=String(process.env.PARSE_API_KEY||"").trim();
 const PARSE_LUCKYJET_URL=String(process.env.PARSE_LUCKYJET_URL||"https://api.parse.bot/scraper/2b7d091d-f8a1-483b-b734-63b3d8a81e53/get_round_history").trim();
 const PARSE_LUCKYJET_ALT_URL=String(process.env.PARSE_LUCKYJET_ALT_URL||"https://api.parse.bot/scraper/dfcd37a4-42ee-4914-824f-2651f659871d/get_rounds_history").trim();
+const PARSE_LUCKYJET_TOP_URL=String(process.env.PARSE_LUCKYJET_TOP_URL||"https://api.parse.bot/scraper/dfcd37a4-42ee-4914-824f-2651f659871d/get_top_coefficients").trim();
+const LUCKYJET_POLL_MS=Math.max(10000,Number(process.env.LUCKYJET_POLL_MS||15000));
+const LUCKYJET_HISTORY_LIMIT=Math.max(20,Math.min(1000,Number(process.env.LUCKYJET_HISTORY_LIMIT||500)));
 const ROOT=__dirname;
 let luckyJetBridgeToken={value:crypto.randomBytes(24).toString("hex"),expiresAt:0};
 function bridgeTokenValid(value){const v=String(value||"");if(!v||!luckyJetBridgeToken.value||Date.now()>luckyJetBridgeToken.expiresAt)return false;const a=Buffer.from(v),b=Buffer.from(luckyJetBridgeToken.value);return a.length===b.length&&crypto.timingSafeEqual(a,b)}
@@ -79,6 +82,34 @@ function validateInitData(initData){
  return {ok:true,user};
 }
 globalThis.luckyJetParseStatus=null;
+globalThis.luckyJetCollector={running:false,source:null,last_poll_at:null,last_success_at:null,last_error:null,rounds:[]};
+function mergeLuckyJetRounds(rounds,source){
+ const map=new Map((globalThis.luckyJetCollector.rounds||[]).map(x=>[x.id,x]));
+ for(const x of (rounds||[])){if(!x?.id)continue;map.set(x.id,{...x,source,received_at:x.received_at||new Date().toISOString()});}
+ globalThis.luckyJetCollector.rounds=[...map.values()].sort((a,b)=>String(b.received_at).localeCompare(String(a.received_at))).slice(0,LUCKYJET_HISTORY_LIMIT);
+}
+async function fetchParseTopCoefficients(){
+ if(!PARSE_API_KEY)return {ok:false,error:"parse_api_key_not_configured"};
+ try{
+  const r=await fetch(PARSE_LUCKYJET_TOP_URL,{headers:{"X-API-Key":PARSE_API_KEY,"Accept":"application/json"},signal:AbortSignal.timeout(8000)});
+  const d=await r.json().catch(()=>null);
+  if(!r.ok)return {ok:false,error:"parse_http_"+r.status,api_error:String(d?.error?.code||d?.error?.message||d?.code||d?.message||"").slice(0,160)};
+  const arr=Array.isArray(d?.data?.rounds)?d.data.rounds:Array.isArray(d?.rounds)?d.rounds:[];
+  const rounds=arr.map(x=>({id:String(x.round_id||x.id||"").slice(0,120),coefficient:Number(x.top_coefficient??x.coefficient),hash:String(x.hash||"").slice(0,200),salt:String(x.salt||"").slice(0,200),start_time:x.start_time||null})).filter(x=>x.id&&Number.isFinite(x.coefficient)&&x.coefficient>=1&&x.coefficient<=100000);
+  return rounds.length?{ok:true,rounds,source:"parse_1win_top_coefficients",fetched_at:new Date().toISOString()}:{ok:false,error:"parse_no_top_rounds"};
+ }catch(e){return {ok:false,error:"parse_request_failed",message:String(e.message||e).slice(0,180)};}
+}
+async function pollLuckyJetCollector(){
+ globalThis.luckyJetCollector.running=true;
+ const p=await fetchParseLuckyJetHistory();
+ globalThis.luckyJetCollector.last_poll_at=new Date().toISOString();
+ if(p.ok){mergeLuckyJetRounds(p.rounds,p.source);globalThis.luckyJetCollector.source=p.source;globalThis.luckyJetCollector.last_success_at=p.fetched_at;globalThis.luckyJetCollector.last_error=null;console.log("Lucky Jet collector poll OK "+JSON.stringify({source:p.source,count:p.rounds.length,stored:globalThis.luckyJetCollector.rounds.length}));return;}
+ const top=await fetchParseTopCoefficients();
+ if(top.ok){mergeLuckyJetRounds(top.rounds,top.source);globalThis.luckyJetCollector.source=top.source;globalThis.luckyJetCollector.last_success_at=top.fetched_at;globalThis.luckyJetCollector.last_error=null;console.log("Lucky Jet collector top poll OK "+JSON.stringify({source:top.source,count:top.rounds.length,stored:globalThis.luckyJetCollector.rounds.length}));return;}
+ globalThis.luckyJetCollector.last_error={history:p,top};
+ console.log("Lucky Jet collector poll FAILED "+JSON.stringify({history:p,top}));
+}
+
 
 async function fetchParseLuckyJetHistory(){
  if(!PARSE_API_KEY)return {ok:false,error:"parse_api_key_not_configured"};
@@ -285,6 +316,12 @@ const server=http.createServer(async(req,res)=>{
   if(p.ok&&p.rounds[0])return json(res,200,{ok:true,signal:{multiplier:p.rounds[0].coefficient},source:p.source,received_at:p.fetched_at,round_id:p.rounds[0].id});
   return json(res,200,{ok:false,error:"signal_source_unavailable",message:PARSE_API_KEY?"Нет подтверждённого события Lucky Jet.":"Нет настроенного подтверждённого источника Lucky Jet. Коэффициент не генерируется и не подставляется."});
  }
+ if(url.pathname==="/api/luckyjet-collector-status"&&req.method==="GET"){
+  const r=validateInitData(req.headers["x-telegram-init-data"]||"");
+  if(!r.ok)return json(res,401,{ok:false,error:r.error});
+  if(!OWNER_IDS.includes(String(r.user.id)))return json(res,403,{ok:false,error:"owner_only"});
+  return json(res,200,{ok:true,mode:"read-only",poll_ms:LUCKYJET_POLL_MS,source:globalThis.luckyJetCollector.source,stored_rounds:globalThis.luckyJetCollector.rounds.length,last_poll_at:globalThis.luckyJetCollector.last_poll_at,last_success_at:globalThis.luckyJetCollector.last_success_at,last_error:globalThis.luckyJetCollector.last_error});
+ }
  if(url.pathname==="/api/luckyjet-source-status"&&req.method==="GET"){
   const r=validateInitData(req.headers["x-telegram-init-data"]||"");
   if(!r.ok)return json(res,401,{ok:false,error:r.error});
@@ -298,7 +335,8 @@ const server=http.createServer(async(req,res)=>{
   const u=ensureUser(r.user);const isOwner=OWNER_IDS.includes(String(r.user.id));
   if(!isOwner&&(!u.registered||!u.onewin_id||u.restricted))return json(res,403,{ok:false,error:"access_denied"});
   const p=await fetchParseLuckyJetHistory();
-  if(p.ok)return json(res,200,{ok:true,source_confirmed:true,source:p.source,fetched_at:p.fetched_at,history:p.rounds.map(x=>({time:"",multiplier:x.coefficient,round_id:x.id}))});
+  if(p.ok){mergeLuckyJetRounds(p.rounds,p.source);return json(res,200,{ok:true,source_confirmed:true,source:p.source,fetched_at:p.fetched_at,history:globalThis.luckyJetCollector.rounds.map(x=>({time:x.start_time||x.received_at||"",multiplier:x.coefficient,round_id:x.id,hash:x.hash||null,salt:x.salt||null}))});}
+  if(globalThis.luckyJetCollector.rounds.length)return json(res,200,{ok:true,source_confirmed:true,source:globalThis.luckyJetCollector.source,history:globalThis.luckyJetCollector.rounds.map(x=>({time:x.start_time||x.received_at||"",multiplier:x.coefficient,round_id:x.id,hash:x.hash||null,salt:x.salt||null})),collector_cached:true});
   return json(res,200,{ok:true,source_confirmed:false,history:[],message:PARSE_API_KEY?"Источник не вернул подтверждённые раунды.":"Нет настроенного подтверждённого источника истории Lucky Jet."});
  }
  if(url.pathname==="/api/profile"&&req.method==="POST"){
@@ -350,4 +388,6 @@ server.listen(PORT,async()=>{
   console.log("jetLucky1 server listening on "+PORT+" (read-only source mode)");
   await configureTelegram();
   await runParseStartupCheck();
+  await pollLuckyJetCollector();
+  setInterval(pollLuckyJetCollector,LUCKYJET_POLL_MS).unref();
 });
