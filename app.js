@@ -12,6 +12,7 @@ async function requestBridgeToken(){
   const msg=document.getElementById("luckyJetDiagMsg");
   if(!btn||!box||btn.dataset.busy==="1")return;
   btn.dataset.busy="1";
+  if(msg)msg.textContent="🟢 Кнопка нажата. Начинаем запрос к Render…";
   btn.disabled=true;
   box.textContent="Получаем временный токен…";
   if(msg)msg.textContent="⏳ Запрос отправляется на Render…";
