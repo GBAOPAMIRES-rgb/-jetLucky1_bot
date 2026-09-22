@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Lucky Jet — Browser Bridge</title>
+<style>body{font-family:system-ui;background:#070b16;color:#fff;padding:18px;max-width:760px;margin:auto}textarea,input{width:100%;box-sizing:border-box;margin:8px 0;padding:12px;border-radius:10px;border:1px solid #334;background:#11182a;color:#fff}button{padding:12px 16px;border:0;border-radius:10px;margin:6px 4px 6px 0;font-weight:700}small{color:#aab3c7}.ok{color:#69e0a3}.warn{color:#ffd166}</style></head>
+<body>
+<h2>🔑 Lucky Jet Browser Bridge</h2>
+<p>Безопасный read-only помощник. Он читает только <b>видимый текст страницы</b> и отправляет найденный коэффициент в ваш Render bridge. Cookies, localStorage, SSID, токены и сетевые запросы Lucky Jet он не читает.</p>
+<label>Временный bridge-токен</label>
+<input id="token" type="password" autocomplete="off" placeholder="Вставьте токен сюда">
+<button id="make">Создать скрипт</button>
+<button id="copy">📋 Скопировать скрипт</button>
+<p id="msg" class="small"></p>
+<textarea id="script" rows="12" readonly placeholder="Здесь появится скрипт..."></textarea>
+<script>
+const token=document.getElementById("token"),out=document.getElementById("script"),msg=document.getElementById("msg");
+function esc(s){return String(s).replace(/\\/g,"\\\\").replace(/"/g,'\\\"');}
+function build(){
+ const t=token.value.trim();
+ if(!t){msg.textContent="Сначала вставьте временный токен.";return}
+ const origin=location.origin;
+ const code=`javascript:(()=>{const T="${esc(t)}";const E="${esc(origin)}";let last="";const send=(c,ev)=>{if(!Number.isFinite(c)||c<1||c>100000||String(c)===last)return;last=String(c);fetch(E+"/api/luckyjet-browser-event-bridge",{method:"POST",mode:"cors",headers:{"Content-Type":"application/json","X-LuckyJet-Bridge-Token":T},body:JSON.stringify({coefficient:c,event:String(ev||"visible-dom").slice(0,120)})}).then(r=>r.json()).then(x=>console.log("[Lucky Jet bridge]",x)).catch(e=>console.warn("[Lucky Jet bridge]",e));};const scan=()=>{const els=document.querySelectorAll("body *");for(const el of els){if(el.children.length>2)continue;const txt=(el.textContent||"").trim();if(!txt||txt.length>40)continue;const m=txt.match(/(?:^|\\s)(\\d+(?:[.,]\\d+)?)\\s*[xх×](?:\\s|$)/i)||txt.match(/(?:^|\\s)(\\d+(?:[.,]\\d+)?)\\s*(?:коэффициент|multiplier)(?:\\s|$)/i);if(m){const c=Number(m[1].replace(",","."));if(c>=1&&c<=100000)send(c,txt)}}};scan();new MutationObserver(scan).observe(document.documentElement,{subtree:true,childList:true,characterData:true});console.log("[Lucky Jet bridge] read-only visible-DOM observer started");})();`;
+ out.value=code;msg.innerHTML='<span class="ok">Готово.</span> Скрипт читает только видимый DOM.';
+}
+document.getElementById("make").onclick=build;
+document.getElementById("copy").onclick=async()=>{if(!out.value)build();try{await navigator.clipboard.writeText(out.value);msg.innerHTML='<span class="ok">Скопировано.</span> Теперь вставьте его в адресную строку/закладку официальной страницы Lucky Jet.'}catch{out.focus();out.select();msg.innerHTML='<span class="warn">Автокопирование недоступно.</span> Выделите текст вручную и скопируйте.'}};
+</script></body></html>
