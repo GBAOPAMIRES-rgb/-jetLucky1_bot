@@ -15,7 +15,8 @@ const PARSE_API_KEY=String(process.env.PARSE_API_KEY||"").trim();
 const PARSE_LUCKYJET_URL=String(process.env.PARSE_LUCKYJET_URL||"https://api.parse.bot/scraper/2b7d091d-f8a1-483b-b734-63b3d8a81e53/get_round_history").trim();
 const PARSE_LUCKYJET_ALT_URL=String(process.env.PARSE_LUCKYJET_ALT_URL||"https://api.parse.bot/scraper/dfcd37a4-42ee-4914-824f-2651f659871d/get_rounds_history").trim();
 const PARSE_LUCKYJET_TOP_URL=String(process.env.PARSE_LUCKYJET_TOP_URL||"https://api.parse.bot/scraper/dfcd37a4-42ee-4914-824f-2651f659871d/get_top_coefficients").trim();
-const LUCKYJET_POLL_MS=Math.max(10000,Number(process.env.LUCKYJET_POLL_MS||15000));
+const LUCKYJET_COLLECTOR_ENABLED=String(process.env.LUCKYJET_COLLECTOR_ENABLED||"false").toLowerCase()==="true";
+const LUCKYJET_POLL_MS=Math.max(60000,Number(process.env.LUCKYJET_POLL_MS||300000));
 const LUCKYJET_HISTORY_LIMIT=Math.max(20,Math.min(1000,Number(process.env.LUCKYJET_HISTORY_LIMIT||500)));
 const ROOT=__dirname;
 let luckyJetBridgeToken={value:crypto.randomBytes(24).toString("hex"),expiresAt:0};
@@ -100,6 +101,7 @@ async function fetchParseTopCoefficients(){
  }catch(e){return {ok:false,error:"parse_request_failed",message:String(e.message||e).slice(0,180)};}
 }
 async function pollLuckyJetCollector(){
+ if(!LUCKYJET_COLLECTOR_ENABLED){globalThis.luckyJetCollector.running=false;globalThis.luckyJetCollector.last_poll_at=new Date().toISOString();globalThis.luckyJetCollector.last_error={error:"collector_disabled",reason:"Parse automatic polling disabled to avoid wasting API quota while the source is unavailable"};return;}
  globalThis.luckyJetCollector.running=true;
  const p=await fetchParseLuckyJetHistory();
  globalThis.luckyJetCollector.last_poll_at=new Date().toISOString();
@@ -388,6 +390,13 @@ server.listen(PORT,"0.0.0.0",async()=>{
   console.log("jetLucky1 server listening on "+PORT+" (read-only source mode)");
   await configureTelegram();
   await runParseStartupCheck();
-  await pollLuckyJetCollector();
-  setInterval(pollLuckyJetCollector,LUCKYJET_POLL_MS).unref();
+  if(LUCKYJET_COLLECTOR_ENABLED){
+    await pollLuckyJetCollector();
+    setInterval(pollLuckyJetCollector,LUCKYJET_POLL_MS).unref();
+  }else{
+    globalThis.luckyJetCollector.running=false;
+    globalThis.luckyJetCollector.last_poll_at=new Date().toISOString();
+    globalThis.luckyJetCollector.last_error={error:"collector_disabled",reason:"Parse automatic polling disabled"};
+    console.log("Lucky Jet collector: automatic Parse polling disabled (read-only bridge remains available)");
+  }
 });
