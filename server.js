@@ -119,7 +119,8 @@ function sanitizeLuckyJetFrame(frame){
   return {ok:true,channel,eventType,data:safeData,received_at:new Date().toISOString()};
 }
 globalThis.luckyJetWsFrames=[];
-\nglobalThis.luckyJetParseStatus=null;
+
+globalThis.luckyJetParseStatus=null;
 globalThis.luckyJetCollector={running:false,source:null,last_poll_at:null,last_success_at:null,last_error:null,rounds:[]};
 function mergeLuckyJetRounds(rounds,source){
  const map=new Map((globalThis.luckyJetCollector.rounds||[]).map(x=>[x.id,x]));
