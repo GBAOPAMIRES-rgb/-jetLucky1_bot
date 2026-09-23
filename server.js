@@ -300,7 +300,7 @@ const server=http.createServer(async(req,res)=>{
   console.log("Lucky Jet WS public frame",JSON.stringify({channel:clean.channel,eventType:clean.eventType,direction:clean.direction,received_at:clean.received_at}));
   return json(res,200,{ok:true,accepted:true,channel:clean.channel,eventType:clean.eventType,direction:clean.direction,received_at:clean.received_at});
  }
-\n if(url.pathname==="/api/luckyjet-browser-event-bridge"&&req.method==="POST"){
+ ifif(url.pathname==="/api/luckyjet-browser-event-bridge"&&req.method==="POST"){
   bridgeCors(res);
   if(req.headers.origin!=="https://1wmljx.life"||!bridgeTokenValid(req.headers["x-luckyjet-bridge-token"]))return json(res,403,{ok:false,error:"bridge_token_invalid"});
   let body={};try{body=await readJson(req)}catch{return json(res,400,{ok:false,error:"invalid_json"})}
@@ -393,7 +393,7 @@ const server=http.createServer(async(req,res)=>{
   if(!r.ok||!OWNER_IDS.includes(String(r.user.id)))return json(res,403,{ok:false,error:"owner_only"});
   return json(res,200,{ok:true,mode:"read-only",frames:globalThis.luckyJetWsFrames.length,latest:globalThis.luckyJetWsFrames[0]||null});
  }
-\n if(url.pathname==="/api/luckyjet-collector-status"&&req.method==="GET"){
+ ifif(url.pathname==="/api/luckyjet-collector-status"&&req.method==="GET"){
   const r=validateInitData(req.headers["x-telegram-init-data"]||"");
   if(!r.ok)return json(res,401,{ok:false,error:r.error});
   if(!OWNER_IDS.includes(String(r.user.id)))return json(res,403,{ok:false,error:"owner_only"});
