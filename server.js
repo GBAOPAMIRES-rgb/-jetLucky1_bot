@@ -82,7 +82,44 @@ function validateInitData(initData){
  }
  return {ok:true,user};
 }
-globalThis.luckyJetParseStatus=null;
+
+function sanitizeLuckyJetFrame(frame){
+  const s=String(frame||"");
+  if(s.length>16000)return {ok:false,error:"frame_too_large"};
+  let parsed=null;
+  try{parsed=JSON.parse(s)}catch{}
+  const channel=String(parsed?.push?.channel||parsed?.channel||"");
+  if(channel && !channel.startsWith("lucky-jet-"))return {ok:false,error:"channel_not_allowed"};
+  const pub=parsed?.push?.pub||parsed?.pub||null;
+  const data=pub?.data||null;
+  const eventType=String(data?.eventType||"");
+  const safeData={};
+  if(data&&typeof data==="object"){
+    for(const k of ["eventType","state","currentTime","nextStateTime","index","finalValue","roundInfo"]){
+      if(Object.prototype.hasOwnProperty.call(data,k)){
+        if(k==="roundInfo"&&data[k]&&typeof data[k]==="object"){
+          const ri=data[k], pf=ri.provablyFair&&typeof ri.provablyFair==="object"?ri.provablyFair:null;
+          safeData.roundInfo={};
+          if(ri.roundId!=null)safeData.roundInfo.roundId=String(ri.roundId).slice(0,160);
+          if(ri.id!=null)safeData.roundInfo.id=String(ri.id).slice(0,160);
+          if(pf){
+            safeData.roundInfo.provablyFair={algorithm:String(pf.algorithm||"").slice(0,40)};
+            if(pf.hash!=null)safeData.roundInfo.provablyFair.hash=String(pf.hash).slice(0,300);
+            if(pf.serverSeedHash!=null)safeData.roundInfo.provablyFair.serverSeedHash=String(pf.serverSeedHash).slice(0,300);
+            if(pf.clientSeed!=null)safeData.roundInfo.provablyFair.clientSeed=String(pf.clientSeed).slice(0,200);
+            if(pf.nonce!=null)safeData.roundInfo.provablyFair.nonce=String(pf.nonce).slice(0,100);
+          }
+        }else{
+          safeData[k]=typeof data[k]==="number"||typeof data[k]==="boolean"?data[k]:String(data[k]).slice(0,300);
+        }
+      }
+    }
+  }
+  if(!channel&&!eventType)return {ok:false,error:"not_luckyjet_event"};
+  return {ok:true,channel,eventType,data:safeData,received_at:new Date().toISOString()};
+}
+globalThis.luckyJetWsFrames=[];
+\nglobalThis.luckyJetParseStatus=null;
 globalThis.luckyJetCollector={running:false,source:null,last_poll_at:null,last_success_at:null,last_error:null,rounds:[]};
 function mergeLuckyJetRounds(rounds,source){
  const map=new Map((globalThis.luckyJetCollector.rounds||[]).map(x=>[x.id,x]));
@@ -246,7 +283,23 @@ const server=http.createServer(async(req,res)=>{
   console.log("Lucky Jet iPhone screenshot OCR event",JSON.stringify({coefficient,event,receivedAt,source:"iphone_screenshot_ocr_read_only"}));
   return json(res,200,{ok:true,accepted:true,coefficient,event,received_at:receivedAt,source:"iphone_screenshot_ocr_read_only"});
  }
- if(url.pathname==="/api/luckyjet-browser-event-bridge"&&req.method==="POST"){
+
+ if(url.pathname==="/api/luckyjet-ws-frame-bridge"&&req.method==="POST"){
+  bridgeCors(res);
+  if(req.headers.origin!=="https://1wmljx.life")return json(res,403,{ok:false,error:"bridge_origin_invalid"});
+  let raw="";try{raw=await new Promise((resolve,reject)=>{let b="";req.on("data",x=>{b+=x;if(b.length>30000){reject(new Error("body_too_large"));try{req.destroy()}catch{}}});req.on("end",()=>resolve(b));req.on("error",reject)})}catch{return json(res,400,{ok:false,error:"body_read_failed"})}
+  let body={};try{body=JSON.parse(raw||"{}")}catch{return json(res,400,{ok:false,error:"invalid_json"})}
+  if(!bridgeTokenValid(body.token))return json(res,403,{ok:false,error:"bridge_token_invalid"});
+  const clean=sanitizeLuckyJetFrame(body.frame);
+  if(!clean.ok)return json(res,400,{ok:false,error:clean.error});
+  clean.direction=body.direction==="sent"?"sent":"received";
+  clean.url=String(body.url||"").slice(0,300);
+  globalThis.luckyJetWsFrames.unshift(clean);
+  globalThis.luckyJetWsFrames=globalThis.luckyJetWsFrames.slice(0,200);
+  console.log("Lucky Jet WS public frame",JSON.stringify({channel:clean.channel,eventType:clean.eventType,direction:clean.direction,received_at:clean.received_at}));
+  return json(res,200,{ok:true,accepted:true,channel:clean.channel,eventType:clean.eventType,direction:clean.direction,received_at:clean.received_at});
+ }
+\n if(url.pathname==="/api/luckyjet-browser-event-bridge"&&req.method==="POST"){
   bridgeCors(res);
   if(req.headers.origin!=="https://1wmljx.life"||!bridgeTokenValid(req.headers["x-luckyjet-bridge-token"]))return json(res,403,{ok:false,error:"bridge_token_invalid"});
   let body={};try{body=await readJson(req)}catch{return json(res,400,{ok:false,error:"invalid_json"})}
@@ -333,7 +386,13 @@ const server=http.createServer(async(req,res)=>{
   if(p.ok&&p.rounds[0])return json(res,200,{ok:true,signal:{multiplier:p.rounds[0].coefficient},source:p.source,received_at:p.fetched_at,round_id:p.rounds[0].id});
   return json(res,200,{ok:false,error:"signal_source_unavailable",message:PARSE_API_KEY?"Нет подтверждённого события Lucky Jet.":"Нет настроенного подтверждённого источника Lucky Jet. Коэффициент не генерируется и не подставляется."});
  }
- if(url.pathname==="/api/luckyjet-collector-status"&&req.method==="GET"){
+
+ if(url.pathname==="/api/luckyjet-ws-status"&&req.method==="GET"){
+  const r=validateInitData(req.headers["x-telegram-init-data"]||"");
+  if(!r.ok||!OWNER_IDS.includes(String(r.user.id)))return json(res,403,{ok:false,error:"owner_only"});
+  return json(res,200,{ok:true,mode:"read-only",frames:globalThis.luckyJetWsFrames.length,latest:globalThis.luckyJetWsFrames[0]||null});
+ }
+\n if(url.pathname==="/api/luckyjet-collector-status"&&req.method==="GET"){
   const r=validateInitData(req.headers["x-telegram-init-data"]||"");
   if(!r.ok)return json(res,401,{ok:false,error:r.error});
   if(!OWNER_IDS.includes(String(r.user.id)))return json(res,403,{ok:false,error:"owner_only"});
