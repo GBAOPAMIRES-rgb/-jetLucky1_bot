@@ -3,7 +3,7 @@
 <style>body{font-family:system-ui;background:#070b16;color:#fff;padding:18px;max-width:760px;margin:auto}textarea,input{width:100%;box-sizing:border-box;margin:8px 0;padding:12px;border-radius:10px;border:1px solid #334;background:#11182a;color:#fff}button{padding:12px 16px;border:0;border-radius:10px;margin:6px 4px 6px 0;font-weight:700}small{color:#aab3c7}.ok{color:#69e0a3}.warn{color:#ffd166}</style></head>
 <body>
 <h2>🔑 Lucky Jet Browser Bridge</h2>
-<p>Безопасный read-only помощник. Он читает только <b>видимый текст страницы</b>. JavaScript делает только один read-only POST в Render с найденным видимым коэффициентом. Cookies, localStorage, SSID, токены Lucky Jet и сетевые данные не читаются.</p>
+<p>Безопасный read-only помощник. Теперь он может подготовить <b>перехватчик публичных Lucky Jet WebSocket-событий</b> для DevSnoop. Он отправляет на Render только события канала <code>lucky-jet-*</code> и безопасные поля раунда. SSID, cookies, токены и секретные поля не отправляются.</p><ol><li>Получите временный токен.</li><li>Создайте скрипт ниже.</li><li>В DevSnoop откройте Lucky Jet → Console → JavaScript REPL и выполните скрипт.</li><li>После появления <b>Bridge armed</b> выполните действие в Lucky Jet, которое создаёт новое WebSocket-соединение/перезапускает игру. Не копируйте отдельные кадры.</li></ol>
 <label>Временный bridge-токен</label>
 <input id="token" type="password" autocomplete="off" placeholder="Вставьте токен сюда">
 <button id="make">Создать скрипт</button>
@@ -22,4 +22,4 @@ function build(){
 }
 document.getElementById("make").onclick=build;
 document.getElementById("copy").onclick=async()=>{if(!out.value)build();try{await navigator.clipboard.writeText(out.value);msg.innerHTML='<span class="ok">Скопировано.</span> Вставьте код в действие «Запустить JavaScript на веб-странице». Не добавляйте javascript: в начало.'}catch{out.focus();out.select();msg.innerHTML='<span class="warn">Автокопирование недоступно.</span> Выделите текст вручную и скопируйте.'}};
-</script></body></html>
+</script>\n<script>const originalBuild=build;build=function(){originalBuild();const t=token.value.trim();if(!t)return;const current=out.value;out.value=current.replace('TOKEN_PLACEHOLDER',t);msg.innerHTML='<span class="ok">Готово.</span> Скопируйте этот код в DevSnoop → Console → JavaScript REPL. После сообщения Bridge armed перезапустите именно WebSocket/игру, если Lucky Jet это позволяет.'}</script>\n</body></html>
