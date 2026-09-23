@@ -1,63 +1,44 @@
 <!doctype html>
 <html lang="ru">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Lucky Jet — WebSocket Bridge</title>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Lucky Jet — WebSocket Bridge</title>
 <style>
 body{font-family:system-ui;background:#070b16;color:#fff;padding:18px;max-width:760px;margin:auto}
-textarea,input{width:100%;box-sizing:border-box;margin:8px 0;padding:12px;border-radius:10px;border:1px solid #334;background:#11182a;color:#fff}
+textarea{width:100%;box-sizing:border-box;margin:8px 0;padding:12px;border-radius:10px;border:1px solid #334;background:#11182a;color:#fff;font-family:ui-monospace,monospace;font-size:12px;line-height:1.45}
 button{padding:12px 16px;border:0;border-radius:10px;margin:6px 4px 6px 0;font-weight:700}
-small{color:#aab3c7}.ok{color:#69e0a3}.warn{color:#ffd166}
+.ok{color:#69e0a3}.warn{color:#ffd166}
 </style></head>
 <body>
 <h2>🔌 Lucky Jet WebSocket Bridge</h2>
-<p class="small">Read-only мост. Он перехватывает только публичные сообщения Lucky Jet WebSocket и передаёт на Render безопасные поля событий. SSID, cookies и другие секреты не отправляются.</p>
+<p>Read-only мост. Он перехватывает только публичные сообщения Lucky Jet WebSocket и передаёт на Render безопасные поля событий. SSID, cookies и другие секреты не отправляются.</p>
 <ol>
-<li>Получите временный bridge-токен.</li>
-<li>Вставьте его ниже.</li>
-<li>Нажмите «Создать скрипт» → «Скопировать скрипт».</li>
-<li>В DevSnoop на странице Lucky Jet откройте <b>Console → Run JavaScript...</b> и вставьте скрипт.</li>
-<li>После <b>Bridge armed</b> перезагрузите Lucky Jet, чтобы создалось новое WebSocket-соединение.</li>
+<li>Получите временный bridge-токен обычным способом.</li>
+<li><b>На этой странице токен больше вставлять не нужно.</b></li>
+<li>Скопируйте готовый скрипт ниже.</li>
+<li>В DevSnoop на странице Lucky Jet откройте <b>Console → Run JavaScript...</b>, вставьте скрипт и запустите.</li>
+<li>Скрипт попросит временный bridge-токен — вставьте его прямо в появившееся окно.</li>
+<li>После <b>Bridge armed</b> перезагрузите Lucky Jet.</li>
 </ol>
-<label>Временный bridge-токен</label>
-<input id="token" type="password" autocomplete="off" placeholder="Вставьте временный токен">
-<button id="make" type="button">Создать скрипт</button>
-<button id="copy" type="button">📋 Скопировать скрипт</button>
-<p id="msg"></p>
-<textarea id="script" rows="16" readonly placeholder="Здесь появится WebSocket-скрипт..."></textarea>
+<p class="ok"><b>Важно:</b> токен не записывается на эту страницу и не попадает в код страницы.</p>
+<textarea id="script" rows="28" readonly></textarea>
+<p id="msg" class="ok">Готовый скрипт загружен. Кнопка генерации больше не нужна.</p>
+<button id="select" type="button">Выделить весь скрипт</button>
 <script>
-const token=document.getElementById("token"),out=document.getElementById("script"),msg=document.getElementById("msg");
-function build(){
- const t=token.value.trim();
- if(!t){msg.textContent="Сначала вставьте временный токен.";return}
- const endpoint="https://jetlucky1.onrender.com/api/luckyjet-ws-frame-bridge";
- const code='(()=>{try{const T='+JSON.stringify(t)+',E='+JSON.stringify(endpoint)+';if(window.__luckyJetBridgeInstalled){console.log("[Lucky Jet bridge] already installed");return}window.__luckyJetBridgeInstalled=true;fetch("https://jetlucky1.onrender.com/api/luckyjet-browser-ping-bridge",{method:"POST",headers:{"Content-Type":"application/json","X-LuckyJet-Bridge-Token":T},body:"{}"}).then(r=>r.json()).then(x=>console.log("[Lucky Jet bridge] startup ping",x)).catch(e=>console.log("[Lucky Jet bridge] startup ping error",String(e)));const relevant=s=>{const x=String(s||"");return x.includes("lucky-jet-")||x.includes("stopCoefficient")||x.includes("startGame")||x.includes("provablyFair")};const send=(direction,url,frame)=>{try{const raw=typeof frame==="string"?frame:JSON.stringify(frame);if(!relevant(raw))return;fetch(E,{method:"POST",headers:{"Content-Type":"text/plain;charset=UTF-8"},body:JSON.stringify({token:T,direction,url:String(url||"").slice(0,300),frame:raw.slice(0,16000)})}).then(r=>r.json()).then(x=>console.log("[Lucky Jet bridge] Render",x)).catch(e=>console.log("[Lucky Jet bridge] POST error",String(e)))}catch(e){console.log("[Lucky Jet bridge] send error",String(e))}};const NativeWS=window.WebSocket;const proto=NativeWS&&NativeWS.prototype;if(!proto)throw new Error("WebSocket prototype unavailable");const wrapMessage=(ws,listener)=>{if(typeof listener!=="function"||listener.__luckyJetWrapped)return listener;const wrapped=function(e){try{send("received",this&&this.url,e&&e.data)}catch(err){}return listener.call(this,e)};try{Object.defineProperty(wrapped,"__luckyJetWrapped",{value:true})}catch(e){}return wrapped};if(!proto.__luckyJetSendHook){const nativeSend=proto.send;proto.send=function(data){try{send("sent",this&&this.url,data)}catch(e){}return nativeSend.call(this,data)};proto.__luckyJetSendHook=true}if(!proto.__luckyJetMessageHook){const nativeAdd=proto.addEventListener;proto.addEventListener=function(type,listener,options){return nativeAdd.call(this,type,type==="message"?wrapMessage(this,listener):listener,options)};proto.__luckyJetMessageHook=true}if(!proto.__luckyJetOnMessageHook){const desc=Object.getOwnPropertyDescriptor(proto,"onmessage");if(desc&&desc.set&&desc.get){Object.defineProperty(proto,"onmessage",{configurable:desc.configurable,enumerable:desc.enumerable,get:desc.get,set:function(listener){return desc.set.call(this,wrapMessage(this,listener))}})}proto.__luckyJetOnMessageHook=true}if(!window.__luckyJetWSConstructorHook){const WrappedWS=function(url,protocols){const ws=protocols===undefined?new NativeWS(url):new NativeWS(url,protocols);try{ws.addEventListener("message",function(e){send("received",ws&&ws.url,e&&e.data)})}catch(e){}return ws};WrappedWS.prototype=NativeWS.prototype;try{Object.setPrototypeOf(WrappedWS,NativeWS)}catch(e){}window.WebSocket=WrappedWS;window.__luckyJetWSConstructorHook=true}
-if(!window.__luckyJetDispatchHook){
- const NativeDispatch=EventTarget.prototype.dispatchEvent;
- EventTarget.prototype.dispatchEvent=function(event){
-  try{
-   const target=this;
-   const isWS=target instanceof NativeWS;
-   if(isWS&&event&&event.type==="message"){
-    send("received",target&&target.url,event&&event.data);
-   }
-  }catch(e){}
-  return NativeDispatch.call(this,event);
- };
- window.__luckyJetDispatchHook=true;
-}
-if(!window.__luckyJetDiagHook){
- window.__luckyJetDiagHook=true;
- console.log("[Lucky Jet bridge] late diagnostic hook installed: existing WebSocket message dispatch is monitored.");
-}
-console.log("Bridge armed. WebSocket send/addEventListener/onmessage/constructor/dispatchEvent hooks installed; existing and future Lucky Jet WebSocket messages are monitored.");}catch(e){console.log("[Lucky Jet bridge] install error",String(e))}})();';
- out.value=code;
- msg.innerHTML='<span class="ok">Готово.</span> Этот код предназначен именно для DevSnoop → Console → Run JavaScript...';
-}
-document.getElementById("make").addEventListener("click",build);
-token.addEventListener("input",()=>{ if(token.value.trim()) msg.textContent="Токен введён. Нажмите «Создать скрипт»."; });
-document.getElementById("copy").addEventListener("click",async()=>{
- if(!out.value){build(); if(!out.value)return;}
- try{await navigator.clipboard.writeText(out.value);msg.innerHTML='<span class="ok">Скопировано.</span> Теперь вставьте код в DevSnoop → Run JavaScript...';}
- catch{out.focus();out.select();msg.innerHTML='<span class="warn">Автокопирование недоступно.</span> Выделите код и скопируйте вручную.'}
-};
+const code = String.raw`(async()=>{try{
+const T=prompt("Lucky Jet bridge token");if(!T){console.log("[Lucky Jet bridge] token not provided");return}
+const E="https://jetlucky1.onrender.com/api/luckyjet-ws-frame-bridge";
+const P="https://jetlucky1.onrender.com/api/luckyjet-browser-ping-bridge";
+const send=(direction,url,frame)=>{try{const raw=typeof frame==="string"?frame:JSON.stringify(frame);const x=String(raw||"");if(!(x.includes("lucky-jet-")||x.includes("stopCoefficient")||x.includes("startGame")||x.includes("provablyFair")))return;fetch(E,{method:"POST",headers:{"Content-Type":"text/plain;charset=UTF-8"},body:JSON.stringify({token:T,direction,url:String(url||"").slice(0,300),frame:raw.slice(0,16000)})}).then(r=>r.json()).then(x=>console.log("[Lucky Jet bridge] Render",x)).catch(e=>console.log("[Lucky Jet bridge] POST error",String(e)))}catch(e){console.log("[Lucky Jet bridge] send error",String(e))}};
+await fetch(P,{method:"POST",headers:{"Content-Type":"application/json","X-LuckyJet-Bridge-Token":T},body:"{}"}).then(r=>r.json()).then(x=>console.log("[Lucky Jet bridge] startup ping",x)).catch(e=>console.log("[Lucky Jet bridge] startup ping error",String(e)));
+const NativeWS=window.WebSocket,proto=NativeWS&&NativeWS.prototype;if(!proto)throw new Error("WebSocket prototype unavailable");
+const wrap=(ws,fn)=>{if(typeof fn!=="function"||fn.__LJ)return fn;const w=function(e){try{send("received",this&&this.url,e&&e.data)}catch(_){}return fn.call(this,e)};try{Object.defineProperty(w,"__LJ",{value:true})}catch(_){}return w};
+if(!proto.__LJsend){const n=proto.send;proto.send=function(d){try{send("sent",this&&this.url,d)}catch(_){}return n.call(this,d)};proto.__LJsend=true}
+if(!proto.__LJadd){const n=proto.addEventListener;proto.addEventListener=function(t,l,o){return n.call(this,t,t==="message"?wrap(this,l):l,o)};proto.__LJadd=true}
+if(!proto.__LJon){const d=Object.getOwnPropertyDescriptor(proto,"onmessage");if(d&&d.set&&d.get)Object.defineProperty(proto,"onmessage",{configurable:d.configurable,enumerable:d.enumerable,get:d.get,set:function(l){return d.set.call(this,wrap(this,l))}});proto.__LJon=true}
+if(!window.__LJdispatch){const n=EventTarget.prototype.dispatchEvent;EventTarget.prototype.dispatchEvent=function(e){try{if(this instanceof NativeWS&&e&&e.type==="message")send("received",this&&this.url,e&&e.data)}catch(_){}return n.call(this,e)};window.__LJdispatch=true}
+if(!window.__LJctor){const W=function(u,p){const ws=p===undefined?new NativeWS(u):new NativeWS(u,p);try{ws.addEventListener("message",e=>send("received",ws&&ws.url,e&&e.data))}catch(_){}return ws};W.prototype=NativeWS.prototype;try{Object.setPrototypeOf(W,NativeWS)}catch(_){}window.WebSocket=W;window.__LJctor=true}
+console.log("Bridge armed. Existing and future Lucky Jet WebSocket messages are monitored.");
+}catch(e){console.log("[Lucky Jet bridge] install error",String(e))}})();`;
+document.getElementById("script").value=code;
+document.getElementById("select").addEventListener("click",()=>{const x=document.getElementById("script");x.focus();x.select();});
 </script>
 </body></html>
