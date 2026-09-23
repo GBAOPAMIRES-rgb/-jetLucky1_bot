@@ -19,8 +19,8 @@ small{color:#aab3c7}.ok{color:#69e0a3}.warn{color:#ffd166}
 </ol>
 <label>Временный bridge-токен</label>
 <input id="token" type="password" autocomplete="off" placeholder="Вставьте временный токен">
-<button id="make">Создать скрипт</button>
-<button id="copy">📋 Скопировать скрипт</button>
+<button id="make" type="button">Создать скрипт</button>
+<button id="copy" type="button">📋 Скопировать скрипт</button>
 <p id="msg"></p>
 <textarea id="script" rows="16" readonly placeholder="Здесь появится WebSocket-скрипт..."></textarea>
 <script>
@@ -52,9 +52,10 @@ console.log("Bridge armed. WebSocket send/addEventListener/onmessage/constructor
  out.value=code;
  msg.innerHTML='<span class="ok">Готово.</span> Этот код предназначен именно для DevSnoop → Console → Run JavaScript...';
 }
-document.getElementById("make").onclick=build;
-document.getElementById("copy").onclick=async()=>{
- if(!out.value)build();
+document.getElementById("make").addEventListener("click",build);
+token.addEventListener("input",()=>{ if(token.value.trim()) msg.textContent="Токен введён. Нажмите «Создать скрипт»."; });
+document.getElementById("copy").addEventListener("click",async()=>{
+ if(!out.value){build(); if(!out.value)return;}
  try{await navigator.clipboard.writeText(out.value);msg.innerHTML='<span class="ok">Скопировано.</span> Теперь вставьте код в DevSnoop → Run JavaScript...';}
  catch{out.focus();out.select();msg.innerHTML='<span class="warn">Автокопирование недоступно.</span> Выделите код и скопируйте вручную.'}
 };
