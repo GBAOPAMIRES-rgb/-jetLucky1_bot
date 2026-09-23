@@ -9,29 +9,36 @@ button{padding:12px 16px;border:0;border-radius:10px;margin:6px 4px 6px 0;font-w
 </style></head>
 <body>
 <h2>🔌 Lucky Jet WebSocket Bridge</h2>
-<p>Read-only мост для DevSnoop. Сначала вставь сюда <b>временный bridge-токен</b>, затем скопируй готовый скрипт.</p>
+<p>Read-only мост для DevSnoop. Этот вариант целится именно в <b>/websocket/lifecycle</b> и пропускает только сообщения Lucky Jet.</p>
 <label>Временный bridge-токен:</label>
 <input id="token" type="text" autocomplete="off" spellcheck="false" style="width:100%;box-sizing:border-box;padding:13px;border-radius:10px;border:1px solid #334;background:#11182a;color:#fff;margin:8px 0;font-family:ui-monospace,monospace">
 <p id="msg" class="warn">Токен ещё не введён.</p>
-<textarea id="script" rows="30" readonly></textarea>
+<textarea id="script" rows="34" readonly></textarea>
 <button id="copy" type="button">Скопировать готовый скрипт</button>
 <script>
 const TEMPLATE=String.raw`(async()=>{try{
 const T="__TOKEN__";if(!T){console.log("[Lucky Jet bridge] token not provided");return}
 const E="https://jetlucky1.onrender.com/api/luckyjet-ws-frame-bridge",P="https://jetlucky1.onrender.com/api/luckyjet-browser-ping-bridge";
-const send=(direction,url,frame)=>{try{const raw=typeof frame==="string"?frame:JSON.stringify(frame);const x=String(raw||"");if(!(x.includes("lucky-jet-")||x.includes("stopCoefficient")||x.includes("startGame")||x.includes("provablyFair")))return;fetch(E,{method:"POST",headers:{"Content-Type":"text/plain;charset=UTF-8","X-LuckyJet-Bridge-Token":T},body:JSON.stringify({token:T,direction,url:String(url||"").slice(0,300),frame:raw.slice(0,16000)})}).then(r=>r.json()).then(x=>console.log("[Lucky Jet bridge] Render",x)).catch(e=>console.log("[Lucky Jet bridge] POST error",String(e)))}catch(e){console.log("[Lucky Jet bridge] send error",String(e))}};
-fetch(P,{method:"POST",headers:{"Content-Type":"application/json","X-LuckyJet-Bridge-Token":T},body:"{}"}).then(r=>r.json()).then(x=>console.log("[Lucky Jet bridge] startup ping",x)).catch(e=>console.log("[Lucky Jet bridge] startup ping error",String(e)));
+const LIFE="/websocket/lifecycle";
+const isTarget=(url,raw)=>{const u=String(url||"");const x=String(raw||"");return u.includes(LIFE)&&(x.includes("lucky-jet-")||x.includes("startGame")||x.includes("endGame")||x.includes("stopCoefficient")||x.includes("provablyFair"))};
+const send=(direction,url,frame)=>{try{const raw=typeof frame==="string"?frame:JSON.stringify(frame);if(!isTarget(url,raw))return;fetch(E,{method:"POST",headers:{"Content-Type":"text/plain;charset=UTF-8","X-LuckyJet-Bridge-Token":T},body:JSON.stringify({token:T,direction,url:String(url||"").slice(0,300),frame:raw.slice(0,16000)})}).then(r=>r.json()).then(x=>console.log("[Lucky Jet lifecycle bridge] Render",x)).catch(e=>console.log("[Lucky Jet lifecycle bridge] POST error",String(e)))}catch(e){console.log("[Lucky Jet lifecycle bridge] send error",String(e))}};
+fetch(P,{method:"POST",headers:{"Content-Type":"application/json","X-LuckyJet-Bridge-Token":T},body:"{}"}).then(r=>r.json()).then(x=>console.log("[Lucky Jet lifecycle bridge] startup ping",x)).catch(e=>console.log("[Lucky Jet lifecycle bridge] startup ping error",String(e)));
 const NativeWS=window.WebSocket,proto=NativeWS&&NativeWS.prototype;if(!proto)throw new Error("WebSocket prototype unavailable");
 const wrap=(fn)=>{if(typeof fn!=="function"||fn.__LJ)return fn;const w=function(e){try{send("received",this&&this.url,e&&e.data)}catch(_){}return fn.call(this,e)};try{Object.defineProperty(w,"__LJ",{value:true})}catch(_){}return w};
 if(!proto.__LJsend){const n=proto.send;proto.send=function(d){try{send("sent",this&&this.url,d)}catch(_){}return n.call(this,d)};proto.__LJsend=true}
 if(!proto.__LJadd){const n=proto.addEventListener;proto.addEventListener=function(t,l,o){return n.call(this,t,t==="message"?wrap(l):l,o)};proto.__LJadd=true}
 if(!window.__LJdispatch){const n=EventTarget.prototype.dispatchEvent;EventTarget.prototype.dispatchEvent=function(e){try{if(this instanceof NativeWS&&e&&e.type==="message")send("received",this&&this.url,e&&e.data)}catch(_){}return n.call(this,e)};window.__LJdispatch=true}
-console.log("Bridge armed. Existing and future Lucky Jet WebSocket messages are monitored.");
-}catch(e){console.log("[Lucky Jet bridge] install error",String(e))}})();`;
+if(!window.__LJconstructor){
+  const WrappedWS=new Proxy(NativeWS,{construct(Target,args,newTarget){const ws=Reflect.construct(Target,args,newTarget);try{const u=String(ws.url||args?.[0]||"");if(u.includes(LIFE))console.log("[Lucky Jet lifecycle bridge] lifecycle WebSocket created",u)}catch(_){}return ws}});
+  try{Object.defineProperty(WrappedWS,"__LJwrapped",{value:true})}catch(_){}
+  window.WebSocket=WrappedWS;window.__LJconstructor=true;
+}
+console.log("[Lucky Jet lifecycle bridge] armed. Target: /websocket/lifecycle");
+}catch(e){console.log("[Lucky Jet lifecycle bridge] install error",String(e))}})();`;
 const token=document.getElementById("token"),out=document.getElementById("script"),msg=document.getElementById("msg");
-function build(){const t=token.value.trim();out.value=t?TEMPLATE.replaceAll("__TOKEN__",t):"";msg.textContent=t?"Скрипт готов. Теперь нажми «Скопировать готовый скрипт».":"Токен ещё не введён.";msg.className=t?"ok":"warn";}
+function build(){const t=token.value.trim();out.value=t?TEMPLATE.replaceAll("__TOKEN__",t):"";msg.textContent=t?"Скрипт готов. Нажми «Скопировать готовый скрипт».":"Токен ещё не введён.";msg.className=t?"ok":"warn";}
 token.addEventListener("input",build);
 document.getElementById("copy").addEventListener("click",async()=>{build();if(!out.value)return;out.focus();out.select();try{await navigator.clipboard.writeText(out.value);msg.textContent="Скрипт скопирован. Вставь его в DevSnoop → Console → Run JavaScript.";msg.className="ok"}catch(e){msg.textContent="Скрипт выделен. Нажми «Copy» в меню iPhone.";msg.className="warn"}});
 build();
 </script>
-</body></body></html>
+</body></html>
