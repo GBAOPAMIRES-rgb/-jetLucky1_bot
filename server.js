@@ -95,7 +95,7 @@ function sanitizeLuckyJetFrame(frame){
   const eventType=String(data?.eventType||"");
   const safeData={};
   if(data&&typeof data==="object"){
-    for(const k of ["eventType","state","currentTime","nextStateTime","index","finalValue","roundInfo"]){
+    for(const k of ["eventType","state","currentTime","nextStateTime","index","finalValue","finalCoefficientValues","roundInfo","id"]){
       if(Object.prototype.hasOwnProperty.call(data,k)){
         if(k==="roundInfo"&&data[k]&&typeof data[k]==="object"){
           const ri=data[k], pf=ri.provablyFair&&typeof ri.provablyFair==="object"?ri.provablyFair:null;
@@ -108,7 +108,11 @@ function sanitizeLuckyJetFrame(frame){
             if(pf.serverSeedHash!=null)safeData.roundInfo.provablyFair.serverSeedHash=String(pf.serverSeedHash).slice(0,300);
             if(pf.clientSeed!=null)safeData.roundInfo.provablyFair.clientSeed=String(pf.clientSeed).slice(0,200);
             if(pf.nonce!=null)safeData.roundInfo.provablyFair.nonce=String(pf.nonce).slice(0,100);
+            if(pf.salt!=null)safeData.roundInfo.provablyFair.salt=String(pf.salt).slice(0,300);
+            if(pf.checkString!=null)safeData.roundInfo.provablyFair.checkString=String(pf.checkString).slice(0,1000);
           }
+        }else if(k==="finalCoefficientValues"&&Array.isArray(data[k])){
+          safeData.finalCoefficientValues=data[k].slice(0,10).map(Number).filter(Number.isFinite);
         }else{
           safeData[k]=typeof data[k]==="number"||typeof data[k]==="boolean"?data[k]:String(data[k]).slice(0,300);
         }
@@ -119,6 +123,52 @@ function sanitizeLuckyJetFrame(frame){
   return {ok:true,channel,eventType,data:safeData,received_at:new Date().toISOString()};
 }
 globalThis.luckyJetWsFrames=[];
+globalThis.luckyJetLifecycleAudits=[];
+
+function auditLuckyJetLifecycleFrame(clean){
+  try{
+    const data=clean?.data||{};
+    const roundId=String(data.id||data.roundInfo?.id||"").slice(0,160);
+    const eventType=String(data.eventType||"");
+    if(!roundId)return;
+    const pf=data.roundInfo?.provablyFair||null;
+    if(eventType==="startGame"&&pf?.hash){
+      const existing=globalThis.luckyJetLifecycleAudits.find(x=>x.round_id===roundId);
+      const audit=existing||{round_id:roundId,created_at:new Date().toISOString()};
+      audit.start={hash:String(pf.hash).slice(0,300),algorithm:String(pf.algorithm||"").slice(0,40),received_at:clean.received_at||null};
+      audit.status="waiting_for_reveal";
+      if(!existing)globalThis.luckyJetLifecycleAudits.unshift(audit);
+    }
+    if((eventType==="endGame"||eventType==="stopCoefficient")&&pf){
+      const audit=globalThis.luckyJetLifecycleAudits.find(x=>x.round_id===roundId);
+      const coefficient=Array.isArray(data.finalCoefficientValues)&&Number.isFinite(Number(data.finalCoefficientValues[0]))
+        ?Number(data.finalCoefficientValues[0])
+        :Number(data.finalValue);
+      if(!audit){
+        globalThis.luckyJetLifecycleAudits.unshift({round_id:roundId,created_at:new Date().toISOString()});
+      }
+      const target=globalThis.luckyJetLifecycleAudits.find(x=>x.round_id===roundId);
+      target.end=target.end||{};
+      if(Number.isFinite(coefficient))target.end.coefficient=coefficient;
+      if(pf.salt!=null)target.end.salt=String(pf.salt).slice(0,300);
+      if(pf.checkString!=null)target.end.checkString=String(pf.checkString).slice(0,1000);
+      if(pf.hash!=null)target.end.hash=String(pf.hash).slice(0,300);
+      target.end.received_at=clean.received_at||null;
+      const hash=String(target.end.hash||target.start?.hash||"").toLowerCase();
+      const checkString=String(target.end.checkString||"");
+      if(hash&&checkString){
+        const calculated=crypto.createHash("sha512").update(checkString,"utf8").digest("hex").toLowerCase();
+        target.verification={algorithm:"SHA512",calculated_hash:calculated,match:calculated===hash};
+        target.status=target.verification.match?"verified_match":"verified_mismatch";
+      }else{
+        target.status="waiting_for_complete_reveal";
+      }
+    }
+    globalThis.luckyJetLifecycleAudits=globalThis.luckyJetLifecycleAudits.slice(0,100);
+  }catch(e){
+    console.warn("Lucky Jet lifecycle audit error",String(e.message||e));
+  }
+}
 
 globalThis.luckyJetParseStatus=null;
 globalThis.luckyJetCollector={running:false,source:null,last_poll_at:null,last_success_at:null,last_error:null,rounds:[]};
@@ -297,6 +347,7 @@ const server=http.createServer(async(req,res)=>{
   clean.url=String(body.url||"").slice(0,300);
   globalThis.luckyJetWsFrames.unshift(clean);
   globalThis.luckyJetWsFrames=globalThis.luckyJetWsFrames.slice(0,200);
+  auditLuckyJetLifecycleFrame(clean);
   console.log("Lucky Jet WS public frame",JSON.stringify({channel:clean.channel,eventType:clean.eventType,direction:clean.direction,received_at:clean.received_at}));
   return json(res,200,{ok:true,accepted:true,channel:clean.channel,eventType:clean.eventType,direction:clean.direction,received_at:clean.received_at});
  }
@@ -388,6 +439,11 @@ const server=http.createServer(async(req,res)=>{
   return json(res,200,{ok:false,error:"signal_source_unavailable",message:PARSE_API_KEY?"Нет подтверждённого события Lucky Jet.":"Нет настроенного подтверждённого источника Lucky Jet. Коэффициент не генерируется и не подставляется."});
  }
 
+ if(url.pathname==="/api/luckyjet-ws-audit"&&req.method==="GET"){
+  const r=validateInitData(req.headers["x-telegram-init-data"]||"");
+  if(!r.ok||!OWNER_IDS.includes(String(r.user.id)))return json(res,403,{ok:false,error:"owner_only"});
+  return json(res,200,{ok:true,mode:"read-only",audits:globalThis.luckyJetLifecycleAudits});
+ }
  if(url.pathname==="/api/luckyjet-ws-status"&&req.method==="GET"){
   const r=validateInitData(req.headers["x-telegram-init-data"]||"");
   if(!r.ok||!OWNER_IDS.includes(String(r.user.id)))return json(res,403,{ok:false,error:"owner_only"});
