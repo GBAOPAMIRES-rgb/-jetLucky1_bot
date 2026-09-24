@@ -497,6 +497,12 @@ if(url.pathname==="/api/luckyjet-ws-meta-status"&&req.method==="GET"){
   if(!r.ok||!OWNER_IDS.includes(String(r.user.id)))return json(res,403,{ok:false,error:"owner_only"});
   return json(res,200,{ok:true,mode:"read-only",frames:globalThis.luckyJetWsFrames.length,latest:globalThis.luckyJetWsFrames[0]||null});
  }
+ if(url.pathname==="/api/luckyjet-browser-context-status"&&req.method==="GET"){
+  const r=validateInitData(req.headers["x-telegram-init-data"]||"");
+  if(!r.ok)return json(res,401,{ok:false,error:r.error});
+  if(!OWNER_IDS.includes(String(r.user.id)))return json(res,403,{ok:false,error:"owner_only"});
+  return json(res,200,{ok:true,context:globalThis.luckyJetBridgeContext||null});
+ }
  if(url.pathname==="/api/luckyjet-collector-status"&&req.method==="GET"){
   const r=validateInitData(req.headers["x-telegram-init-data"]||"");
   if(!r.ok)return json(res,401,{ok:false,error:r.error});
