@@ -18,6 +18,9 @@ const PARSE_LUCKYJET_TOP_URL=String(process.env.PARSE_LUCKYJET_TOP_URL||"https:/
 const LUCKYJET_COLLECTOR_ENABLED=String(process.env.LUCKYJET_COLLECTOR_ENABLED||"false").toLowerCase()==="true";
 const LUCKYJET_POLL_MS=Math.max(60000,Number(process.env.LUCKYJET_POLL_MS||300000));
 const LUCKYJET_HISTORY_LIMIT=Math.max(20,Math.min(1000,Number(process.env.LUCKYJET_HISTORY_LIMIT||500)));
+const ONEWIN_SSID=String(process.env.ONEWIN_SSID||"").trim();
+const LUCKYJET_SSID=String(process.env.LUCKYJET_SSID||"").trim();
+const LUCKYJET_SSID_MODE="read-only";
 const ROOT=__dirname;
 let luckyJetBridgeToken={value:crypto.randomBytes(24).toString("hex"),expiresAt:0};
 function bridgeTokenValid(value){const v=String(value||"");if(!v||!luckyJetBridgeToken.value||Date.now()>luckyJetBridgeToken.expiresAt)return false;const a=Buffer.from(v),b=Buffer.from(luckyJetBridgeToken.value);return a.length===b.length&&crypto.timingSafeEqual(a,b)}
@@ -454,6 +457,13 @@ const server=http.createServer(async(req,res)=>{
   if(!r.ok)return json(res,401,{ok:false,error:r.error});
   if(!OWNER_IDS.includes(String(r.user.id)))return json(res,403,{ok:false,error:"owner_only"});
   return json(res,200,{ok:true,mode:"read-only",poll_ms:LUCKYJET_POLL_MS,source:globalThis.luckyJetCollector.source,stored_rounds:globalThis.luckyJetCollector.rounds.length,last_poll_at:globalThis.luckyJetCollector.last_poll_at,last_success_at:globalThis.luckyJetCollector.last_success_at,last_error:globalThis.luckyJetCollector.last_error});
+ }
+
+ if(url.pathname==="/api/luckyjet-ssid-status"&&req.method==="GET"){
+  const r=validateInitData(req.headers["x-telegram-init-data"]||"");
+  if(!r.ok)return json(res,401,{ok:false,error:r.error});
+  if(!OWNER_IDS.includes(String(r.user.id)))return json(res,403,{ok:false,error:"owner_only"});
+  return json(res,200,{ok:true,mode:LUCKYJET_SSID_MODE,onewin_ssid_configured:Boolean(ONEWIN_SSID),luckyjet_ssid_configured:Boolean(LUCKYJET_SSID),onewin_ssid_length:ONEWIN_SSID.length,luckyjet_ssid_length:LUCKYJET_SSID.length,values_exposed:false,websocket_auth_implemented:false,reason:"SSID values are configured separately; the exact authenticated Lucky Jet WebSocket handshake must be confirmed before opening a direct server-side socket."});
  }
  if(url.pathname==="/api/luckyjet-source-status"&&req.method==="GET"){
   const r=validateInitData(req.headers["x-telegram-init-data"]||"");
