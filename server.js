@@ -338,6 +338,27 @@ const server=http.createServer(async(req,res)=>{
   return json(res,200,{ok:true,accepted:true,coefficient,event,received_at:receivedAt,source:"iphone_screenshot_ocr_read_only"});
  }
 
+ if(url.pathname==="/api/luckyjet-ws-meta-bridge"&&req.method==="POST"){
+  bridgeCors(res);
+  let raw="";try{raw=await new Promise((resolve,reject)=>{let b="";req.on("data",x=>{b+=x;if(b.length>12000){reject(new Error("body_too_large"));try{req.destroy()}catch{}}});req.on("end",()=>resolve(b));req.on("error",reject)})}catch{return json(res,400,{ok:false,error:"body_read_failed"})}
+  let body={};try{body=JSON.parse(raw||"{}")}catch{return json(res,400,{ok:false,error:"invalid_json"})}
+  if(!bridgeTokenValid(body.token))return json(res,403,{ok:false,error:"bridge_token_invalid"});
+  const clean={
+    direction:body.direction==="sent"?"sent":"received",
+    url:String(body.url||"").slice(0,300),
+    readyState:Number.isFinite(Number(body.readyState))?Number(body.readyState):null,
+    protocol:String(body.protocol||"").slice(0,120),
+    keyNames:Array.isArray(body.keyNames)?body.keyNames.map(x=>String(x).slice(0,80)).slice(0,40):[],
+    keyLengths:body.keyLengths&&typeof body.keyLengths==="object"?Object.fromEntries(Object.entries(body.keyLengths).slice(0,40).map(([k,v])=>[String(k).slice(0,80),Number.isFinite(Number(v))?Number(v):null])):{},
+    frameLength:Number.isFinite(Number(body.frameLength))?Math.min(200000,Number(body.frameLength)):null,
+    at:new Date().toISOString()
+  };
+  globalThis.luckyJetWsMeta=globalThis.luckyJetWsMeta||[];
+  globalThis.luckyJetWsMeta.unshift(clean);
+  globalThis.luckyJetWsMeta=globalThis.luckyJetWsMeta.slice(0,100);
+  console.log("Lucky Jet WS safe metadata",JSON.stringify(clean));
+  return json(res,200,{ok:true,accepted:true,at:clean.at,key_names:clean.keyNames,frame_length:clean.frameLength});
+ }
  if(url.pathname==="/api/luckyjet-ws-frame-bridge"&&req.method==="POST"){
   bridgeCors(res);
   
@@ -446,6 +467,11 @@ const server=http.createServer(async(req,res)=>{
   const r=validateInitData(req.headers["x-telegram-init-data"]||"");
   if(!r.ok||!OWNER_IDS.includes(String(r.user.id)))return json(res,403,{ok:false,error:"owner_only"});
   return json(res,200,{ok:true,mode:"read-only",audits:globalThis.luckyJetLifecycleAudits});
+ }
+ if(url.pathname==="/api/luckyjet-ws-meta-status"&&req.method==="GET"){
+  const r=validateInitData(req.headers["x-telegram-init-data"]||"");
+  if(!r.ok||!OWNER_IDS.includes(String(r.user.id)))return json(res,403,{ok:false,error:"owner_only"});
+  return json(res,200,{ok:true,mode:"read-only",entries:globalThis.luckyJetWsMeta||[]});
  }
  if(url.pathname==="/api/luckyjet-ws-status"&&req.method==="GET"){
   const r=validateInitData(req.headers["x-telegram-init-data"]||"");
