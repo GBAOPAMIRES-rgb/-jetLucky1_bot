@@ -2,6 +2,7 @@ const http=require("http");
 const fs=require("fs");
 const path=require("path");
 const crypto=require("crypto");
+const WebSocket=require("ws");
 
 const PORT=process.env.PORT||3000;
 const OWNER_IDS=[...new Set((String(process.env.OWNER_IDS||"")+","+String(process.env.OWNER_ID||"")+",38263727,5158203829").split(",").map(x=>x.trim()).filter(Boolean))];
@@ -127,6 +128,63 @@ function sanitizeLuckyJetFrame(frame){
 }
 globalThis.luckyJetWsFrames=[];
 globalThis.luckyJetLifecycleAudits=[];
+globalThis.luckyJetDirectProbe={status:"not_started",url:"wss://crash-gateway-grm-cr.gamedev-tech.cc/websocket/lifecycle",started_at:null,connected_at:null,closed_at:null,last_error:null,frames:0,last_event:null};
+
+function sanitizeProbeEvent(raw){
+  const clean=sanitizeLuckyJetFrame(raw);
+  if(!clean.ok)return null;
+  const d=clean.data||{};
+  return {
+    channel:clean.channel||null,
+    eventType:d.eventType||null,
+    state:d.state||null,
+    id:d.id||d.roundInfo?.id||null,
+    roundId:d.roundInfo?.roundId||null,
+    finalValue:Number.isFinite(Number(d.finalValue))?Number(d.finalValue):null,
+    finalCoefficientValues:Array.isArray(d.finalCoefficientValues)?d.finalCoefficientValues.slice(0,3):[],
+    received_at:clean.received_at
+  };
+}
+
+function runLuckyJetDirectReadOnlyProbe(){
+  const url="wss://crash-gateway-grm-cr.gamedev-tech.cc/websocket/lifecycle";
+  const p=globalThis.luckyJetDirectProbe={status:"connecting",url,started_at:new Date().toISOString(),connected_at:null,closed_at:null,last_error:null,frames:0,last_event:null};
+  let ws;
+  try{
+    ws=new WebSocket(url,{headers:{Origin:"https://1play.gamedev-tech.cc"},handshakeTimeout:8000});
+    ws.on("open",()=>{
+      p.status="connected";
+      p.connected_at=new Date().toISOString();
+      console.log("Lucky Jet direct read-only WS probe CONNECTED "+JSON.stringify({url}));
+    });
+    ws.on("message",(buf)=>{
+      p.frames++;
+      const ev=sanitizeProbeEvent(buf.toString());
+      if(ev){
+        p.last_event=ev;
+        globalThis.luckyJetWsFrames.unshift(ev);
+        globalThis.luckyJetWsFrames=globalThis.luckyJetWsFrames.slice(0,100);
+        auditLuckyJetLifecycleFrame({data:{eventType:ev.eventType,state:ev.state,id:ev.id,finalValue:ev.finalValue,finalCoefficientValues:ev.finalCoefficientValues,roundInfo:ev.roundId?{roundId:ev.roundId}:undefined},received_at:ev.received_at});
+        console.log("Lucky Jet direct read-only WS event "+JSON.stringify(ev));
+      }
+    });
+    ws.on("error",(err)=>{
+      p.last_error=String(err?.message||err).slice(0,180);
+      if(p.status!=="connected")p.status="failed";
+      console.log("Lucky Jet direct read-only WS probe ERROR "+JSON.stringify({error:p.last_error}));
+    });
+    ws.on("close",()=>{
+      p.closed_at=new Date().toISOString();
+      if(p.status==="connected")p.status="closed";
+      console.log("Lucky Jet direct read-only WS probe CLOSED "+JSON.stringify({status:p.status,frames:p.frames}));
+    });
+    setTimeout(()=>{try{if(ws.readyState===WebSocket.OPEN||ws.readyState===WebSocket.CONNECTING)ws.close(1000,"read-only probe complete")}catch{}},12000).unref();
+  }catch(e){
+    p.status="failed";
+    p.last_error=String(e.message||e).slice(0,180);
+    console.log("Lucky Jet direct read-only WS probe FAILED "+JSON.stringify({error:p.last_error}));
+  }
+}
 
 function auditLuckyJetLifecycleFrame(clean){
   try{
@@ -492,6 +550,11 @@ if(url.pathname==="/api/luckyjet-ws-meta-status"&&req.method==="GET"){
   if(!r.ok||!OWNER_IDS.includes(String(r.user.id)))return json(res,403,{ok:false,error:"owner_only"});
   return json(res,200,{ok:true,mode:"read-only",entries:globalThis.luckyJetWsMeta||[]});
  }
+ if(url.pathname==="/api/luckyjet-direct-probe-status"&&req.method==="GET"){
+  const r=validateInitData(req.headers["x-telegram-init-data"]||"");
+  if(!r.ok||!OWNER_IDS.includes(String(r.user.id)))return json(res,403,{ok:false,error:"owner_only"});
+  return json(res,200,{ok:true,mode:"read-only",probe:globalThis.luckyJetDirectProbe});
+ }
  if(url.pathname==="/api/luckyjet-ws-status"&&req.method==="GET"){
   const r=validateInitData(req.headers["x-telegram-init-data"]||"");
   if(!r.ok||!OWNER_IDS.includes(String(r.user.id)))return json(res,403,{ok:false,error:"owner_only"});
@@ -582,6 +645,7 @@ server.listen(PORT,"0.0.0.0",async()=>{
   console.log("jetLucky1 server listening on "+PORT+" (read-only source mode)");
   await configureTelegram();
   await runParseStartupCheck();
+  runLuckyJetDirectReadOnlyProbe();
   if(LUCKYJET_COLLECTOR_ENABLED){
     await pollLuckyJetCollector();
     setInterval(pollLuckyJetCollector,LUCKYJET_POLL_MS).unref();
