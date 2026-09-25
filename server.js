@@ -475,6 +475,38 @@ const server=http.createServer(async(req,res)=>{
   if(!result.ok)return json(res,400,result);
   return json(res,200,{ok:true,found:Boolean(result.found),candidate:result.found?result:null});
  }
+ if(url.pathname==="/api/luckyjet-browser-agent"&&(req.method==="OPTIONS")){bridgeCors(res);res.writeHead(204);return res.end();}
+ if(url.pathname==="/api/luckyjet-browser-agent"&&req.method==="POST"){
+  bridgeCors(res);
+  let body={};try{body=await readJson(req)}catch{return json(res,400,{ok:false,error:"invalid_json"})}
+  const safePaths=new Set(["/websocket/lifecycle","/websocket/state","/websocket/secondary"]);
+  const urlPath=String(body.url_path||"").slice(0,120);
+  if(!safePaths.has(urlPath))return json(res,400,{ok:false,error:"socket_path_not_allowed"});
+  const hits=Array.isArray(body.hits)?body.hits.slice(0,30).map(h=>({
+    path:String(h?.path||"").slice(0,300),
+    value:Array.isArray(h?.value)?h.value.slice(0,10).map(Number).filter(Number.isFinite):
+      (typeof h?.value==="number"&&Number.isFinite(h.value)?h.value:String(h?.value||"").slice(0,160))
+  })).filter(h=>/coefficient|multiplier|crashpoint/i.test(h.path)): [];
+  if(!hits.length)return json(res,200,{ok:true,found:false});
+  const candidate={
+    source:"automatic_browser_read_only",
+    url_path:urlPath,
+    direction:body.direction==="sent"?"sent":"received",
+    eventType:String(body.eventType||"").slice(0,80)||null,
+    roundId:String(body.roundId||"").slice(0,160)||null,
+    hits,
+    frame_length:Number.isFinite(Number(body.frame_length))?Math.min(30000,Number(body.frame_length)):null,
+    page_origin:String(body.page_origin||"").slice(0,200),
+    received_at:new Date().toISOString()
+  };
+  globalThis.luckyJetWsDiscovery=globalThis.luckyJetWsDiscovery||{frames:0,candidates:[],last_candidate:null};
+  globalThis.luckyJetWsDiscovery.frames++;
+  globalThis.luckyJetWsDiscovery.last_candidate=candidate;
+  globalThis.luckyJetWsDiscovery.candidates.unshift(candidate);
+  globalThis.luckyJetWsDiscovery.candidates=globalThis.luckyJetWsDiscovery.candidates.slice(0,100);
+  console.log("Lucky Jet AUTOMATIC browser candidate "+JSON.stringify(candidate));
+  return json(res,200,{ok:true,found:true,candidate});
+ }
  if(url.pathname==="/api/luckyjet-ws-discovery-status"&&req.method==="GET"){
   const r=validateInitData(req.headers["x-telegram-init-data"]||"");
   if(!r.ok||!OWNER_IDS.includes(String(r.user.id)))return json(res,403,{ok:false,error:"owner_only"});
