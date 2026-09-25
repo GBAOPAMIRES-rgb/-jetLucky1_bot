@@ -9,7 +9,7 @@ button{padding:12px 16px;border:0;border-radius:10px;margin:6px 4px 6px 0;font-w
 </style></head>
 <body>
 <h2>🔌 Lucky Jet WebSocket Bridge</h2>
-<p>Read-only мост для DevSnoop. Цель: <b>/websocket/lifecycle</b>. Он перехватывает только сообщения Lucky Jet и не выполняет никаких игровых действий.</p>
+<p>Read-only мост для DevSnoop. Цель: <b>/websocket/lifecycle</b>. Важно: Lucky Jet работает во cross-origin iframe, поэтому скрипт нужно запускать <b>в контексте iframe Lucky Jet</b>, а не только в основной странице. Он перехватывает только сообщения Lucky Jet и не выполняет игровых действий.</p>
 <label>Временный bridge-токен:</label>
 <input id="token" type="text" autocomplete="off" spellcheck="false" style="width:100%;box-sizing:border-box;padding:13px;border-radius:10px;border:1px solid #334;background:#11182a;color:#fff;margin:8px 0;font-family:ui-monospace,monospace">
 <p id="msg" class="warn">Токен ещё не введён.</p>
@@ -40,7 +40,7 @@ if(!window.__LJconstructor){
 }
 const contextPayload=(()=>{const iframes=[...document.querySelectorAll("iframe")];const origins=iframes.map(f=>{try{return new URL(f.src||"",location.href).origin}catch{return ""}}).filter(Boolean);let topSame=false;try{topSame=window.top===window}catch(_){};return {href:location.href,origin:location.origin,top_same_origin:topSame,iframe_count:iframes.length,iframe_origins:origins,websocket_supported:Boolean(window.WebSocket),websocket_constructor_name:String(window.WebSocket?.name||"").slice(0,80),websocket_wrapped:Boolean(window.WebSocket?.__LJwrapped)}})();
 fetch(C,{method:"POST",headers:{"Content-Type":"application/json","X-LuckyJet-Bridge-Token":T},body:JSON.stringify(contextPayload)}).then(async r=>{const x=await r.json().catch(()=>({http_status:r.status}));console.log("[Lucky Jet bridge] context",x)}).catch(e=>console.log("[Lucky Jet bridge] context POST error",String(e)));
-console.log("[Lucky Jet lifecycle bridge] armed. Safe metadata capture is active for all WebSockets; secret values are never sent. Reopen Lucky Jet after this script so new sockets are created.");
+console.log("[Lucky Jet lifecycle bridge] armed in current frame. Safe metadata capture is active; secret values are never sent. If no lifecycle socket appears, run the same script while DevSnoop is attached to the Lucky Jet iframe context.");
 }catch(e){console.log("[Lucky Jet lifecycle bridge] install error",String(e))}})();`;
 const token=document.getElementById("token"),out=document.getElementById("script"),msg=document.getElementById("msg");
 function build(){const t=token.value.trim();out.value=t?TEMPLATE.replaceAll("__TOKEN__",t):"";msg.textContent=t?"Скрипт готов. Нажми «Скопировать готовый скрипт».":"Токен ещё не введён.";msg.className=t?"ok":"warn";}
