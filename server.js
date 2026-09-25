@@ -202,6 +202,40 @@ function runLuckyJetDirectReadOnlyProbe(){
   }
 }
 
+function discoverLuckyJetCandidates(raw,url,direction){
+  const text=String(raw||"");
+  if(text.length>30000)return {ok:false,error:"frame_too_large"};
+  let obj;try{obj=JSON.parse(text)}catch{return {ok:false,error:"not_json"};}
+  const hits=[]; const allowed=/^(roundid|round_id|id|eventtype|state|coefficient|coefficients|currentcoefficient|currentcoefficients|nextcoefficient|nextcoefficients|multiplier|nextmultiplier|crashpoint|finalcoefficientvalues|finalvalue)$/i;
+  function walk(v,path,depth){
+    if(depth>5||v==null)return;
+    if(Array.isArray(v)){for(let i=0;i<Math.min(v.length,20);i++)walk(v[i],path+"["+i+"]",depth+1);return;}
+    if(typeof v!=="object")return;
+    for(const [k,val] of Object.entries(v).slice(0,80)){
+      const p=path?path+"."+k:k;
+      if(allowed.test(k)){
+        if(typeof val==="number"&&Number.isFinite(val))hits.push({path:p,value:val});
+        else if(Array.isArray(val))hits.push({path:p,value:val.slice(0,10).map(Number).filter(Number.isFinite)});
+        else if(typeof val==="string"&&val.length<=160)hits.push({path:p,value:val});
+      }
+      walk(val,p,depth+1);
+    }
+  }
+  walk(obj,"",0);
+  const relevant=hits.filter(h=>/coefficient|multiplier|crashpoint/i.test(h.path)&&((typeof h.value==="number"&&h.value>=1)||Array.isArray(h.value)));
+  if(!relevant.length)return {ok:true,found:false};
+  const event=(obj?.push?.pub?.[1]?.data)||obj?.data||obj?.push?.data||obj;
+  const result={ok:true,found:true,received_at:new Date().toISOString(),direction:direction==="sent"?"sent":"received",url:String(url||"").slice(0,300),eventType:event?.eventType||null,roundId:event?.roundId||event?.id||event?.roundInfo?.roundId||event?.roundInfo?.id||null,hits:relevant.slice(0,30)};
+  globalThis.luckyJetWsDiscovery=globalThis.luckyJetWsDiscovery||{frames:0,candidates:[],last_candidate:null};
+  globalThis.luckyJetWsDiscovery.frames++;
+  globalThis.luckyJetWsDiscovery.last_candidate=result;
+  globalThis.luckyJetWsDiscovery.candidates.unshift(result);
+  globalThis.luckyJetWsDiscovery.candidates=globalThis.luckyJetWsDiscovery.candidates.slice(0,100);
+  console.log("Lucky Jet WS DISCOVERY CANDIDATE "+JSON.stringify({url:result.url,direction:result.direction,eventType:result.eventType,roundId:result.roundId,hits:result.hits}));
+  return result;
+}
+globalThis.luckyJetWsDiscovery={frames:0,candidates:[],last_candidate:null};
+
 function auditLuckyJetLifecycleFrame(clean){
   try{
     const data=clean?.data||{};
@@ -432,6 +466,19 @@ const server=http.createServer(async(req,res)=>{
   globalThis.luckyJetWsMeta=globalThis.luckyJetWsMeta.slice(0,100);
   console.log("Lucky Jet WS safe metadata",JSON.stringify(clean));
   return json(res,200,{ok:true,accepted:true,at:clean.at,key_names:clean.keyNames,frame_length:clean.frameLength});
+ }
+ if(url.pathname==="/api/luckyjet-ws-discovery-bridge"&&req.method==="POST"){
+  bridgeCors(res);
+  let body={};try{body=await readJson(req)}catch{return json(res,400,{ok:false,error:"invalid_json"})}
+  if(!bridgeTokenValid(body.token))return json(res,403,{ok:false,error:"bridge_token_invalid"});
+  const result=discoverLuckyJetCandidates(body.frame,body.url,body.direction);
+  if(!result.ok)return json(res,400,result);
+  return json(res,200,{ok:true,found:Boolean(result.found),candidate:result.found?result:null});
+ }
+ if(url.pathname==="/api/luckyjet-ws-discovery-status"&&req.method==="GET"){
+  const r=validateInitData(req.headers["x-telegram-init-data"]||"");
+  if(!r.ok||!OWNER_IDS.includes(String(r.user.id)))return json(res,403,{ok:false,error:"owner_only"});
+  return json(res,200,{ok:true,mode:"read-only",discovery:globalThis.luckyJetWsDiscovery});
  }
  if(url.pathname==="/api/luckyjet-ws-frame-bridge"&&req.method==="POST"){
   bridgeCors(res);
