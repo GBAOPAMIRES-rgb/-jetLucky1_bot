@@ -515,10 +515,10 @@ const server=http.createServer(async(req,res)=>{
   if(!isOwner&&(!u.registered||!u.onewin_id||u.restricted))return json(res,403,{ok:false,error:"access_denied"});
   const e=globalThis.luckyJetBrowserLastEvent||null;
   const fresh=e&&e.receivedAt&&(Date.now()-Date.parse(e.receivedAt)<=15000);
-  if(fresh)return json(res,200,{ok:true,signal:{multiplier:e.coefficient},source:e.source||"official_browser_bridge_read_only",received_at:e.receivedAt,event:e.event});
-  const p=await fetchParseLuckyJetHistory();
-  if(p.ok&&p.rounds[0])return json(res,200,{ok:true,signal:{multiplier:p.rounds[0].coefficient},source:p.source,received_at:p.fetched_at,round_id:p.rounds[0].id});
-  return json(res,200,{ok:false,error:"signal_source_unavailable",message:PARSE_API_KEY?"Нет подтверждённого события Lucky Jet.":"Нет настроенного подтверждённого источника Lucky Jet. Коэффициент не генерируется и не подставляется."});
+  if(fresh&&e.eventType==="nextRoundSignal"&&Number.isFinite(Number(e.coefficient))){
+    return json(res,200,{ok:true,signal:{multiplier:Number(e.coefficient)},source:e.source||"official_browser_bridge_read_only",received_at:e.receivedAt,event:e.event});
+  }
+  return json(res,200,{ok:false,error:"future_coefficient_unavailable",message:"Точный коэффициент следующего раунда не доступен из текущего read-only lifecycle потока до завершения раунда. Последний завершившийся коэффициент не используется как будущий сигнал."});
  }
 
  if(url.pathname==="/api/luckyjet-ws-audit"&&req.method==="GET"){
