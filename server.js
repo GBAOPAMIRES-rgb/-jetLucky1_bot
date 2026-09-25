@@ -130,6 +130,8 @@ globalThis.luckyJetWsFrames=[];
 globalThis.luckyJetLifecycleAudits=[];
 globalThis.luckyJetDirectProbe={status:"not_started",url:"wss://crash-gateway-grm-cr.gamedev-tech.cc/websocket/lifecycle",started_at:null,connected_at:null,closed_at:null,last_error:null,frames:0,last_event:null};
 
+globalThis.luckyJetStateProbe={status:"not_started",url:"wss://crash-gateway-grm-cr.gamedev-tech.cc/websocket/state",started_at:null,connected_at:null,closed_at:null,last_error:null,frames:0,last_event:null};
+
 function sanitizeProbeEvent(raw){
   const clean=sanitizeLuckyJetFrame(raw);
   if(!clean.ok)return null;
@@ -144,6 +146,20 @@ function sanitizeProbeEvent(raw){
     finalCoefficientValues:Array.isArray(d.finalCoefficientValues)?d.finalCoefficientValues.slice(0,3):[],
     received_at:clean.received_at
   };
+}
+
+function runLuckyJetStateReadOnlyProbe(){
+  const url="wss://crash-gateway-grm-cr.gamedev-tech.cc/websocket/state";
+  const p=globalThis.luckyJetStateProbe={status:"connecting",url,started_at:new Date().toISOString(),connected_at:null,closed_at:null,last_error:null,frames:0,last_event:null};
+  let ws;
+  try{
+    ws=new WebSocket(url,{headers:{Origin:"https://1play.gamedev-tech.cc"},handshakeTimeout:8000});
+    ws.on("open",()=>{p.status="connected";p.connected_at=new Date().toISOString();console.log("Lucky Jet direct state WS probe CONNECTED "+JSON.stringify({url}));});
+    ws.on("message",(buf)=>{p.frames++;const raw=String(buf||"");let d=null;try{d=JSON.parse(raw)}catch{};const s=String(raw).slice(0,12000);const event=d?.push?.pub?.[1]?.data||d?.data||d?.push?.data||null;p.last_event={received_at:new Date().toISOString(),eventType:event?.eventType||null,id:event?.id||event?.roundInfo?.id||null,currentCoefficients:Array.isArray(event?.currentCoefficients)?event.currentCoefficients.slice(0,3):null,keys:event&&typeof event==="object"?Object.keys(event).slice(0,40):[],frame_length:raw.length,sample:s.slice(0,1200)};console.log("Lucky Jet direct state WS event "+JSON.stringify({eventType:p.last_event.eventType,id:p.last_event.id,currentCoefficients:p.last_event.currentCoefficients,frame_length:raw.length}));});
+    ws.on("error",(err)=>{p.last_error=String(err?.message||err).slice(0,180);if(p.status!=="connected")p.status="failed";console.log("Lucky Jet direct state WS probe ERROR "+JSON.stringify({error:p.last_error}));});
+    ws.on("close",()=>{p.closed_at=new Date().toISOString();if(p.status==="connected")p.status="closed";console.log("Lucky Jet direct state WS probe CLOSED "+JSON.stringify({status:p.status,frames:p.frames}));});
+    setTimeout(()=>{try{if(ws.readyState===WebSocket.OPEN||ws.readyState===WebSocket.CONNECTING)ws.close(1000,"read-only state probe complete")}catch{}},12000).unref();
+  }catch(e){p.status="failed";p.last_error=String(e.message||e).slice(0,180);console.log("Lucky Jet direct state WS probe FAILED "+JSON.stringify({error:p.last_error}));}
 }
 
 function runLuckyJetDirectReadOnlyProbe(){
@@ -550,6 +566,11 @@ if(url.pathname==="/api/luckyjet-ws-meta-status"&&req.method==="GET"){
   if(!r.ok||!OWNER_IDS.includes(String(r.user.id)))return json(res,403,{ok:false,error:"owner_only"});
   return json(res,200,{ok:true,mode:"read-only",entries:globalThis.luckyJetWsMeta||[]});
  }
+ if(url.pathname==="/api/luckyjet-state-probe-status"&&req.method==="GET"){
+  const r=validateInitData(req.headers["x-telegram-init-data"]||"");
+  if(!r.ok||!OWNER_IDS.includes(String(r.user.id)))return json(res,403,{ok:false,error:"owner_only"});
+  return json(res,200,{ok:true,mode:"read-only",probe:globalThis.luckyJetStateProbe});
+ }
  if(url.pathname==="/api/luckyjet-direct-probe-status"&&req.method==="GET"){
   const r=validateInitData(req.headers["x-telegram-init-data"]||"");
   if(!r.ok||!OWNER_IDS.includes(String(r.user.id)))return json(res,403,{ok:false,error:"owner_only"});
@@ -646,6 +667,7 @@ server.listen(PORT,"0.0.0.0",async()=>{
   await configureTelegram();
   await runParseStartupCheck();
   runLuckyJetDirectReadOnlyProbe();
+  runLuckyJetStateReadOnlyProbe();
   if(LUCKYJET_COLLECTOR_ENABLED){
     await pollLuckyJetCollector();
     setInterval(pollLuckyJetCollector,LUCKYJET_POLL_MS).unref();
