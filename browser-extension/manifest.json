@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Lucky Jet Read-Only Collector",
-  "version": "1.0.0",
-  "description": "Automatically discovers safe Lucky Jet WebSocket fields in the browser and forwards only sanitized candidates to Render.",
+  "version": "1.1.0",
+  "description": "Read-only Lucky Jet WebSocket field discovery. Sends only sanitized coefficient candidates to the user's Render diagnostics endpoint.",
   "content_scripts": [
     {
       "matches": [
