@@ -95,7 +95,7 @@ function sanitizeLuckyJetFrame(frame){
   const channel=String(parsed?.push?.channel||parsed?.channel||"");
   if(channel && !channel.startsWith("lucky-jet-"))return {ok:false,error:"channel_not_allowed"};
   const pub=parsed?.push?.pub||parsed?.pub||null;
-  const data=pub?.data||null;
+  const data=(Array.isArray(pub)?pub[1]?.data:pub?.data)||parsed?.data||parsed?.push?.data||null;
   const eventType=String(data?.eventType||"");
   const safeData={};
   if(data&&typeof data==="object"){
@@ -206,7 +206,7 @@ function discoverLuckyJetCandidates(raw,url,direction){
   const text=String(raw||"");
   if(text.length>30000)return {ok:false,error:"frame_too_large"};
   let obj;try{obj=JSON.parse(text)}catch{return {ok:false,error:"not_json"};}
-  const hits=[]; const allowed=/^(roundid|round_id|id|eventtype|state|coefficient|coefficients|currentcoefficient|currentcoefficients|nextcoefficient|nextcoefficients|multiplier|nextmultiplier|crashpoint|finalcoefficientvalues|finalvalue)$/i;
+  const hits=[]; const allowed=/^(roundid|round_id|id|eventtype|state|coefficient|coefficients|current|next|currentcoefficient|currentcoefficients|nextcoefficient|nextcoefficients|multiplier|nextmultiplier|crashpoint|finalcoefficientvalues|finalvalue)$/i;
   function walk(v,path,depth){
     if(depth>5||v==null)return;
     if(Array.isArray(v)){for(let i=0;i<Math.min(v.length,20);i++)walk(v[i],path+"["+i+"]",depth+1);return;}
