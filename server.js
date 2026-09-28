@@ -99,7 +99,7 @@ function sanitizeLuckyJetFrame(frame){
   const eventType=String(data?.eventType||"");
   const safeData={};
   if(data&&typeof data==="object"){
-    for(const k of ["eventType","state","currentTime","nextStateTime","index","finalValue","finalCoefficientValues","roundInfo","id"]){
+    for(const k of ["eventType","state","currentTime","nextStateTime","index","finalValue","finalCoefficientValues","current","next","roundInfo","id"]){
       if(Object.prototype.hasOwnProperty.call(data,k)){
         if(k==="roundInfo"&&data[k]&&typeof data[k]==="object"){
           const ri=data[k], pf=ri.provablyFair&&typeof ri.provablyFair==="object"?ri.provablyFair:null;
@@ -115,8 +115,8 @@ function sanitizeLuckyJetFrame(frame){
             if(pf.salt!=null)safeData.roundInfo.provablyFair.salt=String(pf.salt).slice(0,300);
             if(pf.checkString!=null)safeData.roundInfo.provablyFair.checkString=String(pf.checkString).slice(0,1000);
           }
-        }else if(k==="finalCoefficientValues"&&Array.isArray(data[k])){
-          safeData.finalCoefficientValues=data[k].slice(0,10).map(Number).filter(Number.isFinite);
+        }else if((k==="finalCoefficientValues"||k==="current"||k==="next")&&Array.isArray(data[k])){
+          safeData[k]=data[k].slice(0,10).map(Number).filter(Number.isFinite);
         }else{
           safeData[k]=typeof data[k]==="number"||typeof data[k]==="boolean"?data[k]:String(data[k]).slice(0,300);
         }
